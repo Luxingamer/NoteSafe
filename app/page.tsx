@@ -5,8 +5,8 @@ import { useNotes } from './context/NotesContext';
 import { NoteCategory } from './context/NotesContext';
 import NoteInput from './components/NoteInput';
 import NoteList from './components/NoteList';
-import Sidebar from './components/Sidebar';
 import Settings from './components/Settings';
+import TopBar from './components/TopBar';
 
 // Types de vues disponibles
 type ViewMode = 'all' | 'favorites' | 'archived' | 'recent';
@@ -274,16 +274,21 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Sidebar */}
-      <Sidebar 
+      {/* TopBar au lieu de Sidebar */}
+      <TopBar 
         activeCategory={activeCategory} 
         onSelectCategory={handleSelectCategory}
         onOpenSettings={() => setShowSettings(true)}
+        applyFormat={applyFormat}
+        importNotes={importNotes}
+        exportNotes={exportNotes}
+        searchNotes={searchNotes}
+        goHome={goHome}
       />
       
-      {/* Main Content - ajuster pour tenir compte de la barre de recherche fixe */}
-      <div className="flex-1 flex flex-col items-center p-4 md:p-8 ml-16 md:ml-60 transition-all duration-300 mt-16">
-        <header className="w-full max-w-3xl mb-8 flex items-center justify-between">
+      {/* Main Content - ajusté sans la barre latérale */}
+      <div className="flex-1 flex flex-col items-center p-4 md:p-8 transition-all duration-300 mt-20">
+        <header className="w-full max-w-4xl mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">
               {getPageTitle()}
@@ -312,8 +317,8 @@ export default function Home() {
         
         {/* Barre d'outils - masquée pour les vues d'archives ou de recherche */}
         {activeView !== 'archived' && !searchResults && (
-          <div className="w-full max-w-3xl mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 flex items-center justify-between">
-            <div className="flex space-x-2">
+          <div className="w-full max-w-4xl mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 flex flex-wrap items-center justify-between">
+            <div className="flex flex-wrap gap-2">
               <button 
                 onClick={() => applyFormat('bold')}
                 className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300" 
@@ -361,7 +366,7 @@ export default function Home() {
                 </svg>
               </button>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 mt-2 sm:mt-0">
               <button 
                 onClick={importNotes}
                 className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300" 

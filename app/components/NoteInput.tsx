@@ -80,12 +80,12 @@ export default function NoteInput({ inputRef }: NoteInputProps) {
   return (
     <form 
       onSubmit={handleSubmit} 
-      className={`w-full max-w-3xl transition-all duration-300 ease-in-out
+      className={`w-full max-w-4xl transition-all duration-300 ease-in-out
                  ${isFocused ? 'scale-102 shadow-lg' : 'shadow-md'}
                  ${isAnimating ? 'pulse' : ''}
                  bg-white dark:bg-gray-800 rounded-xl p-4 mb-8 fade-in`}
     >
-      <div className="mb-2">
+      <div className="mb-3">
         <div className="flex flex-wrap gap-2">
           {categories.map((cat) => (
             <button
@@ -111,15 +111,15 @@ export default function NoteInput({ inputRef }: NoteInputProps) {
           onChange={(e) => setInput(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholder="Saisissez votre note ici..."
+          placeholder="Saisissez votre note ici... Vous pouvez écrire un texte aussi long que nécessaire."
           className="w-full resize-none overflow-hidden bg-transparent
                     outline-none text-gray-800 dark:text-gray-200
                     placeholder-gray-400 dark:placeholder-gray-500
-                    min-h-[60px] max-h-[200px] py-2 px-1"
-          rows={1}
+                    min-h-[100px] max-h-[500px] py-2 px-1"
+          rows={3}
         />
       </div>
-      <div className="flex justify-between items-center mt-2">
+      <div className="flex justify-between items-center mt-4">
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Catégorie sélectionnée: <span className="font-medium">{getCategoryLabel(category)}</span>
         </div>
