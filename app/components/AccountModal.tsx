@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
+// Interface définissant les propriétés attendues pour le composant AccountModal
 interface AccountModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen: boolean; // Indique si le modal est ouvert ou non
+  onClose: () => void; // Fonction appelée pour fermer le modal
 }
 
 export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
