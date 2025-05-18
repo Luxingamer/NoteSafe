@@ -275,11 +275,11 @@ export default function NoteItem({ note, searchTerm }: NoteItemProps) {
 
   return (
     <div 
-      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-200
+      className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm transition-all duration-300
                  ${!note.inTrash && note.isPinned ? 'border-l-4 border-amber-500' : ''}
                  ${!note.inTrash && note.favorite ? 'bg-violet-50/50 dark:bg-violet-900/10' : ''}
                  ${note.inTrash ? 'border border-red-200 dark:border-red-900/20' : ''}
-                 hover-transition scale-transition`}
+                 ${!note.archived ? 'hover:shadow-xl hover:scale-[1.02] transform' : ''}`}
     >
       <div className="p-4">
         {/* Contenu de la note */}

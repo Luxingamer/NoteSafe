@@ -96,7 +96,7 @@ export default function Profile() {
       {/* Cartes de statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Notes totales */}
-        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-[1.02] transition-all duration-300">
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-[1.02] transition-all duration-300 hover:shadow-xl">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100">Notes totales</p>
@@ -111,7 +111,7 @@ export default function Profile() {
         </div>
 
         {/* Notes favorites */}
-        <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-[1.02] transition-all duration-300">
+        <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-[1.02] transition-all duration-300 hover:shadow-xl">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-100">Favoris</p>
@@ -126,7 +126,7 @@ export default function Profile() {
         </div>
 
         {/* Notes archivées */}
-        <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-[1.02] transition-all duration-300">
+        <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-[1.02] transition-all duration-300 hover:shadow-xl">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-amber-100">Archives</p>
