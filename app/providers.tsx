@@ -1,34 +1,50 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { NotesProvider } from './context/NotesContext';
+import { SettingsProvider } from './context/SettingsContext';
+import { UserProvider } from './context/UserContext';
+import { AchievementsProvider } from './context/AchievementsContext';
 import { ThemeProvider } from 'next-themes';
-
-// Création du client React Query
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60 * 1000, // 1 minute
-      retry: 1,
-      refetchOnWindowFocus: false
-    }
-  }
-});
+import { NotificationsProvider } from './context/NotificationsContext';
+import { BookProvider } from './context/BookContext';
+import { PointsProvider } from './context/PointsContext';
 
 interface ProvidersProps {
   children: React.ReactNode;
 }
 
 export default function Providers({ children }: ProvidersProps) {
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 1000 * 60 * 5, // 5 minutes
+        retry: 2,
+      },
+    },
+  }));
+
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class">
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <AuthProvider>
-          <NotesProvider>
-            {children}
-          </NotesProvider>
+          <UserProvider>
+            <NotificationsProvider>
+              <SettingsProvider>
+                <NotesProvider>
+                  <AchievementsProvider>
+                    <PointsProvider>
+                      <BookProvider>
+                        {children}
+                      </BookProvider>
+                    </PointsProvider>
+                  </AchievementsProvider>
+                </NotesProvider>
+              </SettingsProvider>
+            </NotificationsProvider>
+          </UserProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

@@ -1,37 +1,34 @@
 import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  serverTimestamp,
-  DocumentReference,
-  Timestamp,
-  setDoc
-} from 'firebase/firestore';
+  ref,
+  set,
+  push,
+  remove,
+  get,
+  query,
+  orderByChild,
+  equalTo,
+  update,
+  Database
+} from 'firebase/database';
 import { db } from './config';
 import { Note, NoteCategory } from '../app/context/NotesContext';
 
-// Collection Firestore pour les notes
-const NOTES_COLLECTION = 'notes';
+// Référence à la collection de notes dans Realtime Database
+const NOTES_PATH = 'notes';
 
-// Interface pour une note dans Firestore
-export interface FirestoreNote extends Omit<Note, 'createdAt' | 'updatedAt'> {
+// Interface pour une note dans la base de données
+export interface DatabaseNote extends Omit<Note, 'id' | 'createdAt' | 'updatedAt'> {
   userId: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type NoteWithoutId = Omit<Note, 'id'>;
 
-// Fonction utilitaire pour vérifier si Firestore est configuré
+// Fonction utilitaire pour vérifier si la base de données est configurée
 const checkDb = () => {
   if (!db) {
-    throw new Error('Firestore n\'est pas configuré. Veuillez configurer vos identifiants Firebase dans le fichier .env.local');
+    throw new Error('La base de données n\'est pas configurée. Veuillez configurer vos identifiants Firebase dans le fichier .env.local');
   }
 };
 
@@ -40,28 +37,30 @@ export const getNotes = async (userId: string): Promise<Note[]> => {
   try {
     // Si Firebase n'est pas configuré, retourner un tableau vide
     if (!db) {
-      console.warn('Firestore n\'est pas configuré. Retour d\'un tableau vide.');
+      console.warn('La base de données n\'est pas configurée. Retour d\'un tableau vide.');
       return [];
     }
 
-    const notesRef = collection(db, NOTES_COLLECTION);
-    const q = query(
-      notesRef, 
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
+    const notesRef = ref(db, NOTES_PATH);
+    const userNotesQuery = query(notesRef, orderByChild('userId'), equalTo(userId));
+    const snapshot = await get(userNotesQuery);
     
-    const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(doc => {
-      const data = doc.data() as FirestoreNote;
-      return {
+    if (!snapshot.exists()) {
+      return [];
+    }
+
+    const notes: Note[] = [];
+    snapshot.forEach((childSnapshot) => {
+      const data = childSnapshot.val() as DatabaseNote;
+      notes.push({
         ...data,
-        id: doc.id,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      } as Note;
+        id: childSnapshot.key as string,
+        createdAt: new Date(data.createdAt),
+        updatedAt: new Date(data.updatedAt)
+      });
     });
+
+    return notes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   } catch (error) {
     console.error('Erreur lors de la récupération des notes:', error);
     throw error;
@@ -73,21 +72,26 @@ export const addNote = async (userId: string, noteData: NoteWithoutId): Promise<
   try {
     checkDb();
     
-    const firestoreNote: FirestoreNote = {
+    const notesRef = ref(db as Database, NOTES_PATH);
+    const newNoteRef = push(notesRef);
+    
+    const databaseNote: DatabaseNote = {
       content: noteData.content,
       category: noteData.category || 'note',
       userId,
-      isPinned: false,
-      isFavorite: false,
-      createdAt: Timestamp.fromDate(noteData.createdAt),
-      updatedAt: Timestamp.fromDate(noteData.updatedAt),
+      favorite: noteData.favorite || false,
+      inTrash: noteData.inTrash || false,
+      isPinned: noteData.isPinned || false,
+      archived: noteData.archived || false,
+      createdAt: noteData.createdAt.toISOString(),
+      updatedAt: noteData.updatedAt.toISOString(),
       synced: true
     };
     
-    const docRef = await addDoc(collection(db, NOTES_COLLECTION), firestoreNote);
+    await set(newNoteRef, databaseNote);
     
     return {
-      id: docRef.id,
+      id: newNoteRef.key as string,
       ...noteData
     };
   } catch (error) {
@@ -101,16 +105,15 @@ export const updateNote = async (noteId: string, noteData: Partial<Note>): Promi
   try {
     checkDb();
     
-    const noteRef = doc(db, NOTES_COLLECTION, noteId);
+    const noteRef = ref(db as Database, `${NOTES_PATH}/${noteId}`);
     
-    const updateData: Partial<FirestoreNote> = {
+    const updateData: Partial<DatabaseNote> = {
       ...noteData,
-      updatedAt: Timestamp.now()
+      updatedAt: new Date().toISOString()
     };
     
-    // Convertir les dates en Timestamp si présentes
     if (noteData.createdAt) {
-      updateData.createdAt = Timestamp.fromDate(noteData.createdAt);
+      updateData.createdAt = noteData.createdAt.toISOString();
     }
     
     // Supprimer l'id du payload de mise à jour
@@ -118,7 +121,7 @@ export const updateNote = async (noteId: string, noteData: Partial<Note>): Promi
       delete updateData.id;
     }
     
-    await updateDoc(noteRef, updateData);
+    await update(noteRef, updateData);
   } catch (error) {
     console.error('Erreur lors de la mise à jour de la note:', error);
     throw error;
@@ -130,31 +133,31 @@ export const deleteNote = async (noteId: string): Promise<void> => {
   try {
     checkDb();
     
-    const noteRef = doc(db, NOTES_COLLECTION, noteId);
-    await deleteDoc(noteRef);
+    const noteRef = ref(db as Database, `${NOTES_PATH}/${noteId}`);
+    await remove(noteRef);
   } catch (error) {
     console.error('Erreur lors de la suppression de la note:', error);
     throw error;
   }
 };
 
-// Synchroniser des notes locales vers Firestore
+// Synchroniser des notes locales vers la base de données
 export const syncNotes = async (userId: string, notes: Note[]): Promise<boolean> => {
   try {
     // Si Firebase n'est pas configuré, indiquer que la synchronisation a échoué
     if (!db) {
-      console.warn('Firestore n\'est pas configuré. La synchronisation est impossible.');
+      console.warn('La base de données n\'est pas configurée. La synchronisation est impossible.');
       return false;
     }
     
-    // 1. Récupérer toutes les notes actuelles de Firestore
-    const firestoreNotes = await getNotes(userId);
-    const firestoreNoteIds = new Set(firestoreNotes.map(note => note.id));
+    // 1. Récupérer toutes les notes actuelles de la base de données
+    const existingNotes = await getNotes(userId);
+    const existingNoteIds = new Set(existingNotes.map(note => note.id));
     
     // 2. Pour chaque note locale
     for (const note of notes) {
-      if (note.id && firestoreNoteIds.has(note.id)) {
-        // La note existe déjà dans Firestore, mise à jour
+      if (note.id && existingNoteIds.has(note.id)) {
+        // La note existe déjà dans la base de données, mise à jour
         await updateNote(note.id, note);
       } else {
         // Nouvelle note à ajouter ou note sans ID
@@ -162,18 +165,21 @@ export const syncNotes = async (userId: string, notes: Note[]): Promise<boolean>
           content: note.content,
           category: note.category || 'note',
           createdAt: note.createdAt,
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          favorite: note.favorite || false,
+          inTrash: note.inTrash || false,
+          isPinned: note.isPinned || false,
+          archived: note.archived || false
         };
         
-        // Si la note a un ID mais n'existe pas dans Firestore (peut-être supprimée)
         if (note.id) {
           // Utiliser l'ID existant pour la création
-          const noteRef = doc(db, NOTES_COLLECTION, note.id);
-          await setDoc(noteRef, {
+          const noteRef = ref(db as Database, `${NOTES_PATH}/${note.id}`);
+          await set(noteRef, {
             ...newNote,
             userId,
-            createdAt: Timestamp.fromDate(newNote.createdAt),
-            updatedAt: Timestamp.fromDate(newNote.updatedAt),
+            createdAt: newNote.createdAt.toISOString(),
+            updatedAt: newNote.updatedAt.toISOString(),
             synced: true
           });
         } else {
@@ -183,12 +189,12 @@ export const syncNotes = async (userId: string, notes: Note[]): Promise<boolean>
       }
     }
     
-    // 3. Vérifier les notes à supprimer (présentes dans Firestore mais pas en local)
+    // 3. Vérifier les notes à supprimer (présentes dans la base de données mais pas en local)
     const localNoteIds = new Set(notes.map(note => note.id));
-    for (const firestoreNote of firestoreNotes) {
-      if (firestoreNote.id && !localNoteIds.has(firestoreNote.id)) {
-        // Cette note existe dans Firestore mais pas en local, la supprimer
-        await deleteNote(firestoreNote.id);
+    for (const existingNote of existingNotes) {
+      if (existingNote.id && !localNoteIds.has(existingNote.id)) {
+        // Cette note existe dans la base de données mais pas en local, la supprimer
+        await deleteNote(existingNote.id);
       }
     }
     

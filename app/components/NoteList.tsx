@@ -1,62 +1,71 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNotes, NoteCategory } from '../context/NotesContext';
 import NoteItem from './NoteItem';
 
 interface NoteListProps {
   categoryFilter?: NoteCategory | 'toutes';
-  viewMode?: 'all' | 'favorites' | 'archived' | 'recent';
+  viewMode?: 'all' | 'favorites' | 'archived' | 'recent' | 'book' | 'ai' | 'notifications' | 'documentation' | 'trash';
 }
 
 export default function NoteList({ 
   categoryFilter = 'toutes',
   viewMode = 'all' 
 }: NoteListProps) {
-  const { notes } = useNotes();
-  const [filter, setFilter] = useState<'all' | 'favorites' | 'archived' | 'recent'>(viewMode);
+  const { notes, searchResults, searchTerm } = useNotes();
   const [internalCategoryFilter, setInternalCategoryFilter] = useState<NoteCategory | 'toutes'>(categoryFilter);
   
-  // Mettre à jour les filtres internes lorsque les props changent
+  // Fonction pour déclencher les filtres de vue
+  const triggerViewFilter = (view: 'all' | 'favorites' | 'archived' | 'recent' | 'trash') => {
+    // Créer et déclencher un événement personnalisé avec la vue sélectionnée
+    const event = new CustomEvent('filter-view', { 
+      detail: { view } 
+    });
+    window.dispatchEvent(event);
+  };
+
+  // Mettre à jour le filtre interne lorsque la prop change
   useEffect(() => {
     setInternalCategoryFilter(categoryFilter);
   }, [categoryFilter]);
-  
-  useEffect(() => {
-    setFilter(viewMode);
-  }, [viewMode]);
 
-  // Filtrer les notes en fonction des filtres sélectionnés
-  const filteredNotes = notes.filter(note => {
-    // Filtre par mode de vue
-    if (filter === 'favorites' && !note.favorite) {
-      return false;
+  // Filtrer les notes en fonction de la catégorie et du mode de vue
+  const filteredNotes = useMemo(() => {
+    let filtered = notes;
+
+    // Filtrer par catégorie si une catégorie est sélectionnée
+    if (internalCategoryFilter !== 'toutes') {
+      filtered = filtered.filter(note => note.category === internalCategoryFilter);
     }
-    
-    if (filter === 'archived' && !note.archived) {
-      return false;
+
+    // Filtrer selon le mode de vue
+    switch (viewMode) {
+      case 'favorites':
+        filtered = filtered.filter(note => note.favorite && !note.inTrash);
+        break;
+      case 'archived':
+        filtered = filtered.filter(note => note.archived && !note.inTrash);
+        break;
+      case 'recent':
+        // Filtrer les notes des 7 derniers jours
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        filtered = filtered.filter(note => 
+          new Date(note.createdAt) >= sevenDaysAgo && !note.inTrash && !note.archived
+        );
+        break;
+      case 'trash':
+        // Afficher uniquement les notes dans la corbeille
+        filtered = filtered.filter(note => note.inTrash);
+        break;
+      default:
+        // Par défaut, exclure les notes dans la corbeille et archivées
+        filtered = filtered.filter(note => !note.inTrash && !note.archived);
     }
-    
-    if (filter === 'all' && note.archived) {
-      return false; // Ne pas afficher les notes archivées dans la vue normale
-    }
-    
-    // Filtre pour les notes récentes (7 derniers jours)
-    if (filter === 'recent') {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      if (note.createdAt < sevenDaysAgo) {
-        return false;
-      }
-    }
-    
-    // Ensuite par catégorie
-    if (internalCategoryFilter !== 'toutes' && note.category !== internalCategoryFilter) {
-      return false;
-    }
-    
-    return true;
-  });
+
+    return filtered;
+  }, [notes, internalCategoryFilter, viewMode]);
 
   // Trier les notes (épinglées en premier, puis par date)
   const sortedNotes = [...filteredNotes].sort((a, b) => {
@@ -101,17 +110,27 @@ export default function NoteList({
 
   // Obtenir le titre de la section en fonction du mode de vue
   const getViewModeTitle = (): string => {
-    switch (filter) {
+    switch (viewMode) {
       case 'favorites':
         return 'Notes favorites';
       case 'archived':
         return 'Notes archivées';
       case 'recent':
         return 'Notes récentes (7 derniers jours)';
+      case 'book':
+        return 'Mode Livre';
+      case 'ai':
+        return 'Intelligence Artificielle';
+      case 'notifications':
+        return 'Notifications';
+      case 'documentation':
+        return 'Documentation';
+      case 'trash':
+        return 'Corbeille';
       default:
         return internalCategoryFilter === 'toutes' 
           ? 'Toutes les notes' 
-          : getCategoryLabel(internalCategoryFilter);
+          : getCategoryLabel(internalCategoryFilter as NoteCategory);
     }
   };
 
@@ -119,15 +138,23 @@ export default function NoteList({
     <div className="w-full max-w-3xl">
       {/* Filtres principaux */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
-          {getViewModeTitle()}
-        </h2>
+        <div>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
+            {getViewModeTitle()}
+          </h2>
+          {searchResults && searchTerm && (
+            <div className="mt-1 text-sm font-normal text-blue-800 dark:text-blue-300">
+              Recherche: <span className="bg-blue-100 dark:bg-blue-900/30 py-0.5 px-2 rounded-full">"{searchTerm}"</span>
+              <span className="ml-2">({searchResults.length} résultat{searchResults.length > 1 ? 's' : ''})</span>
+            </div>
+          )}
+        </div>
         
         <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
           <button
-            onClick={() => setFilter('all')}
+            onClick={() => triggerViewFilter('all')}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              filter === 'all'
+              viewMode === 'all'
                 ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-gray-200'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
@@ -135,9 +162,9 @@ export default function NoteList({
             Toutes
           </button>
           <button
-            onClick={() => setFilter('favorites')}
+            onClick={() => triggerViewFilter('favorites')}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              filter === 'favorites'
+              viewMode === 'favorites'
                 ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-gray-200'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
@@ -145,9 +172,9 @@ export default function NoteList({
             Favoris
           </button>
           <button
-            onClick={() => setFilter('archived')}
+            onClick={() => triggerViewFilter('archived')}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              filter === 'archived'
+              viewMode === 'archived'
                 ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-gray-200'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
@@ -155,14 +182,24 @@ export default function NoteList({
             Archivées
           </button>
           <button
-            onClick={() => setFilter('recent')}
+            onClick={() => triggerViewFilter('recent')}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              filter === 'recent'
+              viewMode === 'recent'
                 ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-gray-200'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             Récentes
+          </button>
+          <button
+            onClick={() => triggerViewFilter('trash')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              viewMode === 'trash'
+                ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-800 dark:text-gray-200'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            }`}
+          >
+            Corbeille
           </button>
         </div>
       </div>
@@ -202,39 +239,43 @@ export default function NoteList({
 
       {/* Liste des notes */}
       {sortedNotes.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400 fade-in bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400 fade-in bg-gray-50 dark:bg-gray-800/50 rounded-lg view-transition-fade">
           <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
           
           <p className="text-lg font-medium">Aucune note à afficher</p>
           <p className="mt-1">
-            {filter === 'favorites' 
+            {viewMode === 'favorites' 
               ? "Marquez des notes comme favorites pour les retrouver ici." 
-              : filter === 'archived' 
+              : viewMode === 'archived' 
                 ? "Les notes archivées apparaîtront ici."
-                : filter === 'recent'
+                : viewMode === 'recent'
                   ? "Aucune note n'a été créée au cours des 7 derniers jours."
-                  : internalCategoryFilter === 'toutes'
-                    ? "Commencez par créer une note !"
-                    : `Aucune note dans la catégorie "${getCategoryLabel(internalCategoryFilter as NoteCategory)}".`
+                  : viewMode === 'trash'
+                    ? "Aucune note dans la corbeille."
+                    : internalCategoryFilter === 'toutes'
+                      ? "Commencez par créer une note !"
+                      : `Aucune note dans la catégorie "${getCategoryLabel(internalCategoryFilter as NoteCategory)}".`
             }
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 mt-4">
           {sortedNotes.map((note, index) => (
             <div 
-              key={note.id} 
-              className="hover-lift transition-all" 
+              key={note.id}
+              className="note-item-enter scale-transition"
               style={{ 
-                animationDelay: `${index * 50}ms`,
-                animationName: 'fadeIn',
-                animationDuration: '300ms',
-                animationFillMode: 'forwards'
+                animationDelay: `${index * 0.05}s`,
+                opacity: 0,
+                animation: `noteEnter 0.3s ease-out ${index * 0.05}s forwards`
               }}
             >
-              <NoteItem note={note} />
+              <NoteItem 
+                note={note} 
+                searchTerm={searchTerm}
+              />
             </div>
           ))}
         </div>

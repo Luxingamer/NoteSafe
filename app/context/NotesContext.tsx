@@ -18,10 +18,15 @@ export type NoteCategory = 'mot' | 'phrase' | 'idée' | 'réflexion' | 'histoire
 export interface Note {
   id: string;
   content: string;
-  favorite: boolean;
   category: NoteCategory;
   createdAt: Date;
   updatedAt: Date;
+  favorite: boolean;
+  inTrash: boolean;
+  isPinned: boolean;
+  archived: boolean;
+  synced?: boolean;
+  trashedAt?: Date;
 }
 
 // Interface pour le contexte
@@ -30,12 +35,16 @@ interface NotesContextProps {
   addNote: (content: string, category: NoteCategory) => void;
   updateNote: (id: string, data: Partial<Omit<Note, 'id'>>) => void;
   deleteNote: (id: string) => void;
+  permanentlyDeleteNote: (id: string) => void;
+  restoreFromTrash: (id: string) => void;
+  emptyTrash: () => void;
   toggleFavorite: (id: string) => void;
   isLoading: boolean;
   syncNotes: () => Promise<boolean>;
   hasPendingChanges: boolean;
   searchNotes: (searchTerm: string) => void;
   searchResults: Note[] | null;
+  searchTerm: string;
 }
 
 // Créer le contexte
@@ -44,12 +53,16 @@ const NotesContext = createContext<NotesContextProps>({
   addNote: () => {},
   updateNote: () => {},
   deleteNote: () => {},
+  permanentlyDeleteNote: () => {},
+  restoreFromTrash: () => {},
+  emptyTrash: () => {},
   toggleFavorite: () => {},
   isLoading: false,
   syncNotes: async () => false,
   hasPendingChanges: false,
   searchNotes: () => {},
   searchResults: null,
+  searchTerm: '',
 });
 
 // Hook personnalisé pour utiliser le contexte
@@ -69,6 +82,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
   const [searchResults, setSearchResults] = useState<Note[] | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   // Récupérer les notes
   const { 
@@ -141,6 +155,13 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
+  // Fonction pour valider et convertir une date
+  const ensureValidDate = (date: any): Date => {
+    if (date instanceof Date) return date;
+    if (typeof date === 'string') return new Date(date);
+    return new Date();
+  };
+
   // Gestion du localStorage pour les utilisateurs non connectés
   useEffect(() => {
     if (!isInitialized) {
@@ -150,16 +171,20 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
           const savedNotes = localStorage.getItem('notes');
           if (savedNotes) {
             const parsedNotes = JSON.parse(savedNotes);
-            // Convertir les dates string en objets Date
+            // Convertir toutes les dates en objets Date avec validation
             const notesWithDates = parsedNotes.map((note: any) => ({
               ...note,
-              createdAt: new Date(note.createdAt),
-              updatedAt: new Date(note.updatedAt)
+              createdAt: ensureValidDate(note.createdAt),
+              updatedAt: ensureValidDate(note.updatedAt),
+              trashedAt: note.trashedAt ? ensureValidDate(note.trashedAt) : undefined
             }));
             setLocalNotes(notesWithDates);
           }
         } catch (error) {
           console.error('Erreur lors du chargement des notes du localStorage:', error);
+          // En cas d'erreur, réinitialiser les notes
+          setLocalNotes([]);
+          localStorage.removeItem('notes');
         }
       }
       setIsInitialized(true);
@@ -169,7 +194,14 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   // Sauvegarder les notes dans le localStorage pour les utilisateurs non connectés
   useEffect(() => {
     if (isInitialized && !user && localNotes.length > 0) {
-      localStorage.setItem('notes', JSON.stringify(localNotes));
+      // Convertir les dates en chaînes ISO avant la sauvegarde
+      const notesToSave = localNotes.map(note => ({
+        ...note,
+        createdAt: note.createdAt.toISOString(),
+        updatedAt: note.updatedAt.toISOString(),
+        trashedAt: note.trashedAt ? note.trashedAt.toISOString() : undefined
+      }));
+      localStorage.setItem('notes', JSON.stringify(notesToSave));
     }
   }, [localNotes, isInitialized, user]);
 
@@ -179,8 +211,11 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       content,
       category,
       favorite: false,
+      inTrash: false,
       createdAt: new Date(),
       updatedAt: new Date(),
+      isPinned: false,
+      archived: false,
     };
 
     if (user) {
@@ -211,8 +246,26 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, updateNoteMutation]);
 
-  // Fonction pour supprimer une note
+  // Fonction pour supprimer une note (déplacer vers la corbeille)
   const handleDeleteNote = useCallback((id: string) => {
+    const updates = {
+      inTrash: true,
+      trashedAt: new Date()
+    };
+
+    if (user) {
+      // Utiliser la mutation pour les utilisateurs connectés
+      updateNoteMutation.mutate({ id, data: updates });
+    } else {
+      // Utiliser le localStorage pour les utilisateurs non connectés
+      setLocalNotes(prev => 
+        prev.map(note => note.id === id ? { ...note, ...updates } : note)
+      );
+    }
+  }, [user, updateNoteMutation]);
+
+  // Fonction pour supprimer définitivement une note
+  const handlePermanentlyDeleteNote = useCallback((id: string) => {
     if (user) {
       // Utiliser la mutation pour les utilisateurs connectés
       deleteNoteMutation.mutate(id);
@@ -221,6 +274,40 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
       setLocalNotes(prev => prev.filter(note => note.id !== id));
     }
   }, [user, deleteNoteMutation]);
+
+  // Fonction pour restaurer une note de la corbeille
+  const handleRestoreFromTrash = useCallback((id: string) => {
+    const updates = {
+      inTrash: false,
+      trashedAt: undefined
+    };
+
+    if (user) {
+      // Utiliser la mutation pour les utilisateurs connectés
+      updateNoteMutation.mutate({ id, data: updates });
+    } else {
+      // Utiliser le localStorage pour les utilisateurs non connectés
+      setLocalNotes(prev => 
+        prev.map(note => note.id === id ? { ...note, ...updates, updatedAt: new Date() } : note)
+      );
+    }
+  }, [user, updateNoteMutation]);
+
+  // Fonction pour vider la corbeille (supprimer définitivement toutes les notes dans la corbeille)
+  const handleEmptyTrash = useCallback(() => {
+    // Notes à traiter (soit Firebase soit localStorage)
+    const notesToProcess = user ? firebaseNotes : localNotes;
+    
+    // Obtenir les IDs des notes dans la corbeille
+    const trashNoteIds = notesToProcess
+      .filter(note => note.inTrash)
+      .map(note => note.id);
+    
+    // Supprimer définitivement chaque note
+    trashNoteIds.forEach(id => {
+      handlePermanentlyDeleteNote(id);
+    });
+  }, [user, firebaseNotes, localNotes, handlePermanentlyDeleteNote]);
 
   // Fonction pour marquer une note comme favorite
   const handleToggleFavorite = useCallback((id: string) => {
@@ -263,20 +350,27 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     // Si le terme de recherche est vide, réinitialiser les résultats
     if (!searchTerm.trim()) {
       setSearchResults(null);
+      setSearchTerm('');
       return;
     }
 
+    // Stocker le terme de recherche
+    setSearchTerm(searchTerm);
+    
     // Terme de recherche en minuscules pour une recherche insensible à la casse
     const term = searchTerm.toLowerCase();
     
     // Notes à rechercher (soit Firebase soit localStorage)
     const notesToSearch = user ? firebaseNotes : localNotes;
     
-    // Filtrer les notes qui contiennent le terme de recherche
-    const results = notesToSearch.filter(note => 
-      note.content.toLowerCase().includes(term) || 
-      note.category.toLowerCase().includes(term)
-    );
+    // Filtrer les notes qui contiennent le terme de recherche (et qui ne sont pas dans la corbeille)
+    const results = notesToSearch
+      .filter(note => 
+        !note.inTrash && (
+          note.content.toLowerCase().includes(term) || 
+          note.category.toLowerCase().includes(term)
+        )
+      );
     
     setSearchResults(results);
   }, [user, firebaseNotes, localNotes]);
@@ -294,12 +388,16 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
         addNote: handleAddNote,
         updateNote: handleUpdateNote,
         deleteNote: handleDeleteNote,
+        permanentlyDeleteNote: handlePermanentlyDeleteNote,
+        restoreFromTrash: handleRestoreFromTrash,
+        emptyTrash: handleEmptyTrash,
         toggleFavorite: handleToggleFavorite,
         isLoading,
         syncNotes: handleSyncNotes,
         hasPendingChanges,
         searchNotes: handleSearchNotes,
-        searchResults
+        searchResults,
+        searchTerm,
       }}
     >
       {children}

@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getDatabase, Database } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 
 // Configuration Firebase à partir des variables d'environnement
@@ -9,7 +9,8 @@ const firebaseConfig = {
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || ''
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || ''
 };
 
 // Vérifier si les identifiants Firebase sont disponibles
@@ -17,12 +18,12 @@ const isFirebaseConfigured = firebaseConfig.apiKey !== '';
 
 // Initialiser Firebase seulement si les identifiants sont configurés
 let app;
-let db;
+let db: Database | null = null;
 let auth;
 
 if (isFirebaseConfigured) {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-  db = getFirestore(app);
+  db = getDatabase(app);
   auth = getAuth(app);
 } else {
   console.warn('Firebase n\'est pas configuré. Veuillez ajouter vos identifiants Firebase dans le fichier .env.local');

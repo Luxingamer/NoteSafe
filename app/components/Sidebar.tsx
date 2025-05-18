@@ -172,6 +172,22 @@ export default function Sidebar({
                 </svg>
                 {isOpen && <span className="ml-3">Aide</span>}
               </button>
+              
+              {/* Bouton pour quitter l'application */}
+              <button 
+                onClick={() => {
+                  if (window.confirm('Êtes-vous sûr de vouloir quitter l\'application ?')) {
+                    window.close();
+                  }
+                }}
+                className={`flex items-center px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400`}
+                aria-label="Quitter"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                  <path d="M19,3H5C3.89,3 3,3.89 3,5V9H5V5H19V19H5V15H3V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M10.08,15.58L11.5,17L16.5,12L11.5,7L10.08,8.41L12.67,11H3V13H12.67L10.08,15.58Z" />
+                </svg>
+                {isOpen && <span className="ml-3">Quitter</span>}
+              </button>
             </div>
           </div>
         </div>
@@ -198,9 +214,20 @@ export default function Sidebar({
                   e.preventDefault();
                   const target = e.target as HTMLInputElement;
                   if (target.value.trim()) {
+                    // Déclencher l'événement de recherche avec le terme
                     window.dispatchEvent(new CustomEvent('search-notes', { 
                       detail: { term: target.value.trim() } 
                     }));
+                    
+                    // Feedback visuel pour l'utilisateur
+                    const notification = document.createElement('div');
+                    notification.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in-out';
+                    notification.textContent = `Recherche: "${target.value.trim()}"`;
+                    document.body.appendChild(notification);
+                    
+                    setTimeout(() => {
+                      document.body.removeChild(notification);
+                    }, 2000);
                   }
                 }
               }}

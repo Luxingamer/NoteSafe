@@ -1,0 +1,208 @@
+/* Animations de transition entre les vues */
+.view-transition-fade {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.view-transition-left {
+  animation: slideInLeft 0.3s ease-in-out;
+}
+
+.view-transition-right {
+  animation: slideInRight 0.3s ease-in-out;
+}
+
+.view-transition-bottom {
+  animation: slideInBottom 0.3s ease-in-out;
+}
+
+.view-transition-top {
+  animation: slideInTop 0.3s ease-in-out;
+}
+
+/* Animation pour les notes */
+.note-item-enter {
+  animation: noteEnter 0.3s ease-out;
+}
+
+.note-item-exit {
+  animation: noteExit 0.3s ease-in;
+}
+
+/* Animation pour les notifications */
+.notification-enter {
+  animation: notificationSlideIn 0.3s ease-out forwards;
+}
+
+.notification-exit {
+  animation: notificationSlideOut 0.3s ease-in forwards;
+}
+
+/* Définition des keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInBottom {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInTop {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes noteEnter {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes noteExit {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+}
+
+@keyframes notificationSlideIn {
+  0% {
+    transform: translateX(100%) translateY(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translateX(-10%) translateY(0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateX(0) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes notificationSlideOut {
+  0% {
+    transform: translateX(0) translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateX(10%) translateY(0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateX(110%) translateY(0);
+    opacity: 0;
+  }
+}
+
+/* Animations responsives pour mobile */
+@media (max-width: 640px) {
+  @keyframes notificationSlideIn {
+    0% {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    50% {
+      transform: translateY(-10%);
+      opacity: 0.5;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes notificationSlideOut {
+    0% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    50% {
+      transform: translateY(10%);
+      opacity: 0.5;
+    }
+    100% {
+      transform: translateY(110%);
+      opacity: 0;
+    }
+  }
+}
+
+/* Transitions fluides pour les interactions */
+.hover-transition {
+  transition: all 0.2s ease-in-out;
+}
+
+.scale-transition {
+  transition: transform 0.2s ease-in-out;
+}
+
+.scale-transition:hover {
+  transform: scale(1.02);
+}
+
+.opacity-transition {
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* Animation de chargement */
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+} 

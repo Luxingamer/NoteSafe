@@ -1,208 +1,289 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import React, { useState } from 'react';
+import { NoteCategory } from '../context/NotesContext';
+import { useSettings, AppSettings } from '../context/SettingsContext';
+import { useNotes } from '../context/NotesContext';
+import { usePoints, POINT_COSTS } from '../context/PointsContext';
+import PointCost from './PointCost';
 
-interface SettingsProps {
-  isOpen: boolean;
-  onClose: () => void;
-  isLoggedIn?: boolean;
-}
-
-export default function Settings({ isOpen, onClose, isLoggedIn = false }: SettingsProps) {
-  const { logout } = useAuth();
-  const [deleteDelay, setDeleteDelay] = useState(10);
-  const [autoSave, setAutoSave] = useState(true);
-  const [syncEnabled, setSyncEnabled] = useState(false);
+export default function Settings() {
+  const { settings, updateSettings, resetSettings } = useSettings();
+  const { notes } = useNotes();
+  const { spendPoints, canAfford } = usePoints();
+  const [saveIndicator, setSaveIndicator] = useState<string | null>(null);
   
-  // Charger les paramètres depuis le localStorage
-  useEffect(() => {
-    if (isOpen) {
-      const storedSettings = localStorage.getItem('notesAppSettings');
-      if (storedSettings) {
-        try {
-          const settings = JSON.parse(storedSettings);
-          setDeleteDelay(settings.deleteDelay || 10);
-          setAutoSave(settings.autoSave !== undefined ? settings.autoSave : true);
-          setSyncEnabled(settings.syncEnabled || false);
-        } catch (e) {
-          console.error('Erreur lors de la lecture des paramètres', e);
-        }
-      }
+  // Fonction pour montrer un message lorsqu'un paramètre est mis à jour
+  const showUpdateFeedback = (message: string) => {
+    setSaveIndicator(message);
+    setTimeout(() => setSaveIndicator(null), 2000);
+  };
+  
+  // Gestionnaire de mise à jour de paramètres avec feedback visuel
+  const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
+    // Si le thème est modifié, vérifier les points
+    if (newSettings.theme && newSettings.theme !== settings.theme) {
+      const canChangeTheme = spendPoints(POINT_COSTS.CHANGE_THEME, 'Changement de thème', 'theme');
+      if (!canChangeTheme) return;
     }
-  }, [isOpen]);
+
+    updateSettings(newSettings);
+    showUpdateFeedback('Paramètre enregistré');
+  };
   
-  const handleSaveSettings = () => {
-    const settings = {
-      deleteDelay,
-      autoSave,
-      syncEnabled
+  // Gestionnaire pour réinitialiser tous les paramètres
+  const handleResetSettings = () => {
+    if (window.confirm('Êtes-vous sûr de vouloir réinitialiser tous les paramètres à leurs valeurs par défaut ?')) {
+      resetSettings();
+      showUpdateFeedback('Paramètres réinitialisés');
+    }
+  };
+  
+  // Liste des catégories disponibles
+  const categories: NoteCategory[] = ['mot', 'phrase', 'idée', 'réflexion', 'histoire', 'note'];
+  
+  // Fonction pour exporter les notes
+  const handleExportNotes = () => {
+    if (notes.length === 0) {
+      alert('Aucune note à exporter.');
+      return;
+    }
+    
+    const data = {
+      notes,
+      exportDate: new Date().toISOString(),
+      format: settings.exportFormat
     };
     
-    localStorage.setItem('notesAppSettings', JSON.stringify(settings));
-    onClose();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `notes_export_${new Date().toISOString().split('T')[0]}.${settings.exportFormat}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showUpdateFeedback(`${notes.length} notes exportées`);
   };
-  
-  const handleLogout = async () => {
-    try {
-      await logout();
-      onClose();
-    } catch (error) {
-      console.error('Erreur lors de la déconnexion:', error);
-    }
-  };
-  
-  if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 transition-opacity">
-      <div className="fade-in bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              Paramètres
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-              aria-label="Fermer"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z" />
-              </svg>
-            </button>
-          </div>
-          
-          <div className="space-y-6">
-            {/* Comportement */}
-            <section className="border-b border-gray-200 dark:border-gray-700 pb-6">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Comportement</h3>
-              
-              <div className="space-y-4">
-                <div className="flex flex-col space-y-2">
-                  <label htmlFor="deleteDelayRange" className="text-gray-700 dark:text-gray-300">
-                    Délai avant suppression (secondes)
-                  </label>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      id="deleteDelayRange"
-                      type="range"
-                      min="3"
-                      max="30"
-                      value={deleteDelay}
-                      onChange={(e) => setDeleteDelay(parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
-                      aria-label="Délai avant suppression en secondes"
-                      title="Délai avant suppression en secondes"
-                    />
-                    <span className="text-gray-700 dark:text-gray-300 w-8 text-center">{deleteDelay}</span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <label htmlFor="autoSaveToggle" className="text-gray-700 dark:text-gray-300">Sauvegarde automatique</label>
-                  <div className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      id="autoSaveToggle"
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={autoSave}
-                      onChange={() => setAutoSave(!autoSave)}
-                      aria-label="Activer la sauvegarde automatique"
-                      title="Activer la sauvegarde automatique"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                  </div>
-                </div>
-              </div>
-            </section>
-            
-            {/* Synchronisation */}
-            <section className="border-b border-gray-200 dark:border-gray-700 pb-6">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Synchronisation</h3>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="syncToggle" className="text-gray-700 dark:text-gray-300">Activer la synchronisation</label>
-                  <div className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      id="syncToggle"
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={syncEnabled}
-                      onChange={() => setSyncEnabled(!syncEnabled)}
-                      disabled={!isLoggedIn}
-                      aria-label="Activer la synchronisation"
-                      title="Activer la synchronisation"
-                    />
-                    <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600 ${!isLoggedIn ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
-                  </div>
-                </div>
-                
-                {!isLoggedIn && (
-                  <div className="mt-2 text-sm text-yellow-600 dark:text-yellow-400">
-                    Vous devez être connecté pour activer la synchronisation.
-                  </div>
-                )}
-                
-                {isLoggedIn && (
-                  <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-green-500">
-                        <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
-                      </svg>
-                      <span className="text-gray-700 dark:text-gray-300">Connecté</span>
-                    </div>
-                    
-                    <button 
-                      onClick={handleLogout}
-                      className="w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors focus:outline-none"
-                    >
-                      Se déconnecter
-                    </button>
-                  </div>
-                )}
-                
-                {!isLoggedIn && syncEnabled && (
-                  <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-blue-500">
-                        <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
-                      </svg>
-                      <span className="text-gray-700 dark:text-gray-300">Non connecté</span>
-                    </div>
-                    
-                    <button 
-                      onClick={onClose}
-                      className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors focus:outline-none"
-                    >
-                      Se connecter ou créer un compte
-                    </button>
-                  </div>
-                )}
-              </div>
-            </section>
-            
-            {/* À propos */}
-            <section>
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">À propos</h3>
-              <div className="text-gray-600 dark:text-gray-400">
-                <p className="mb-2">Notes App v1.0.0</p>
-                <p>Une application moderne pour prendre des notes et organiser vos idées.</p>
-              </div>
-            </section>
-          </div>
-          
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={handleSaveSettings}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors focus:outline-none"
-            >
-              Enregistrer
-            </button>
-          </div>
+    <div className="w-full max-w-4xl space-y-8 p-6">
+      {/* Indicateur de sauvegarde */}
+      {saveIndicator && (
+        <div className="fixed top-5 right-5 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in">
+          {saveIndicator}
         </div>
+      )}
+      
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-3xl font-bold gradient-text">Paramètres</h2>
+          <button
+            onClick={handleResetSettings}
+          className="px-4 py-2 text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200"
+          >
+            Réinitialiser
+          </button>
       </div>
+      
+      {/* Section Apparence */}
+      <section className="mb-8 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300"
+               style={{ 
+                 background: 'linear-gradient(135deg, var(--background-gradient-from), var(--background-gradient-to))',
+                 borderLeft: '4px solid var(--primary)'
+               }}>
+        <div className="p-6">
+          <h3 className="text-xl font-semibold mb-6" style={{ color: 'var(--primary)' }}>
+            Apparence
+          </h3>
+          
+          {/* Thème */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--primary-dark)' }}>
+              Thème
+              </label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {['violet', 'blue', 'green', 'orange'].map((theme) => (
+                  <button
+                  key={theme}
+                  onClick={() => handleUpdateSettings({ theme })}
+                  className={`relative px-4 py-2 rounded-lg text-white font-medium capitalize transition-all duration-200 transform hover:scale-105 ${
+                    settings.theme === theme ? 'ring-2 ring-offset-2 ring-opacity-60' : ''
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  style={{
+                    background: `var(--${theme}-gradient, linear-gradient(135deg, var(--primary), var(--primary-dark)))`,
+                    boxShadow: settings.theme === theme ? '0 0 15px var(--primary-dark)' : 'none'
+                  }}
+                  disabled={settings.theme === theme || !canAfford(POINT_COSTS.CHANGE_THEME)}
+                >
+                  {theme}
+                  {settings.theme !== theme && <PointCost cost={POINT_COSTS.CHANGE_THEME} />}
+                  </button>
+                ))}
+                  </div>
+                </div>
+                
+          {/* Police */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--primary-dark)' }}>
+              Police
+              </label>
+              <select
+                value={settings.fontFamily}
+              onChange={(e) => handleUpdateSettings({ fontFamily: e.target.value })}
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-gray-700/50 backdrop-blur-sm transition-colors duration-200 hover:border-primary focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+            >
+              <option value="system-ui">Système</option>
+              <option value="serif">Serif</option>
+              <option value="mono">Monospace</option>
+              </select>
+            </div>
+            
+          {/* Taille de police */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--primary-dark)' }}>
+                Taille du texte
+              </label>
+            <div className="flex gap-3">
+              {['small', 'normal', 'large'].map((size) => (
+                <button
+                  key={size}
+                  onClick={() => handleUpdateSettings({ fontSize: size })}
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium capitalize transition-all duration-200 ${
+                    settings.fontSize === size 
+                      ? 'bg-primary text-white transform scale-105'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+            </div>
+          </div>
+        </section>
+        
+      {/* Section Comportement */}
+      <section className="mb-8 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300"
+               style={{ 
+                 background: 'linear-gradient(135deg, var(--background-gradient-from), var(--background-gradient-to))',
+                 borderLeft: '4px solid var(--secondary)'
+               }}>
+        <div className="p-6">
+          <h3 className="text-xl font-semibold mb-6" style={{ color: 'var(--secondary)' }}>
+            Comportement
+          </h3>
+          
+          {/* Sauvegarde automatique */}
+          <div className="flex items-center justify-between mb-6 hover:bg-white/5 p-3 rounded-lg transition-colors duration-200">
+            <div>
+              <label className="text-sm font-medium" style={{ color: 'var(--secondary)' }}>
+                Sauvegarde automatique
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Sauvegarder automatiquement les modifications
+              </p>
+            </div>
+            <button
+              onClick={() => handleUpdateSettings({ autoSave: !settings.autoSave })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                settings.autoSave ? 'bg-secondary' : 'bg-gray-200 dark:bg-gray-700'
+              }`}
+            >
+              <span
+                className={`${
+                  settings.autoSave ? 'translate-x-6' : 'translate-x-1'
+                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200`}
+              />
+            </button>
+          </div>
+          
+          {/* Délai de suppression */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--secondary)' }}>
+              Délai de suppression (secondes)
+            </label>
+                    <input 
+              type="range"
+              min="0"
+              max="60"
+              step="5"
+              value={settings.deleteDelay}
+              onChange={(e) => handleUpdateSettings({ deleteDelay: parseInt(e.target.value) || 0 })}
+              className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-secondary"
+            />
+            <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <span>0s</span>
+              <span>{settings.deleteDelay}s</span>
+              <span>60s</span>
+            </div>
+                  </div>
+          
+          {/* Confirmation de suppression */}
+          <div className="flex items-center justify-between hover:bg-white/5 p-3 rounded-lg transition-colors duration-200">
+                <div>
+              <label className="text-sm font-medium" style={{ color: 'var(--secondary)' }}>
+                Confirmation de suppression
+                </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Demander confirmation avant de supprimer
+              </p>
+                  </div>
+                <button 
+              onClick={() => handleUpdateSettings({ confirmDelete: !settings.confirmDelete })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                settings.confirmDelete ? 'bg-secondary' : 'bg-gray-200 dark:bg-gray-700'
+              }`}
+            >
+              <span
+                className={`${
+                  settings.confirmDelete ? 'translate-x-6' : 'translate-x-1'
+                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200`}
+              />
+                </button>
+          </div>
+          </div>
+        </section>
+            
+      {/* Section Exportation */}
+      <section className="mb-8 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300"
+               style={{ 
+                 background: 'linear-gradient(135deg, var(--background-gradient-from), var(--background-gradient-to))',
+                 borderLeft: '4px solid var(--accent)'
+               }}>
+        <div className="p-6">
+          <h3 className="text-xl font-semibold mb-6" style={{ color: 'var(--accent)' }}>
+            Exportation
+          </h3>
+          
+          {/* Format d'exportation */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--accent)' }}>
+              Format d'exportation
+            </label>
+            <select
+              value={settings.exportFormat}
+              onChange={(e) => handleUpdateSettings({ exportFormat: e.target.value })}
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-gray-700/50 backdrop-blur-sm transition-colors duration-200 hover:border-accent focus:border-accent focus:ring-2 focus:ring-accent focus:ring-opacity-50"
+            >
+              <option value="json">JSON</option>
+              <option value="txt">Texte</option>
+              <option value="md">Markdown</option>
+            </select>
+          </div>
+          
+          <button 
+            onClick={handleExportNotes}
+            className="w-full px-4 py-3 text-sm font-medium text-white rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            style={{
+              background: 'linear-gradient(135deg, var(--accent), var(--accent-dark, var(--accent)))'
+            }}
+            disabled={notes.length === 0}
+          >
+            Exporter les notes ({notes.length})
+          </button>
+          </div>
+        </section>
     </div>
   );
 } 

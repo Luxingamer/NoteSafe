@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NoteSafe - Gardez vos notes en sécurité</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta name="description" content="NoteSafe est une application de prise de notes simple, élégante et sécurisée.">
+</head>
+<body>
+    <!-- Écran de démarrage -->
+    <div id="splash-screen">
+        <div class="splash-content">
+            <div class="logo">
+                <span class="gradient-text">NoteSafe</span>
+            </div>
+            <div class="loader"></div>
+        </div>
+    </div>
+
+    <!-- Application principale -->
+    <div id="app" class="hidden">
+        <!-- Barre supérieure -->
+        <header class="top-bar">
+            <div class="logo">
+                <h1 class="gradient-text">NoteSafe</h1>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Rechercher dans les notes...">
+                <button id="search-button"><i class="fas fa-search"></i></button>
+            </div>
+            <div class="top-actions">
+                <button id="theme-toggle" title="Changer de thème">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button id="settings-button" title="Paramètres">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Contenu principal -->
+        <main class="main-content">
+            <!-- Barre latérale -->
+            <aside class="sidebar">
+                <nav>
+                    <ul>
+                        <li class="active" data-view="all">
+                            <i class="fas fa-sticky-note"></i> Toutes les notes
+                        </li>
+                        <li data-view="favorites">
+                            <i class="fas fa-star"></i> Favoris
+                        </li>
+                        <li data-view="archived">
+                            <i class="fas fa-archive"></i> Archives
+                        </li>
+                        <li data-view="calendar">
+                            <i class="fas fa-calendar"></i> Calendrier
+                        </li>
+                        <li data-view="statistics">
+                            <i class="fas fa-chart-bar"></i> Statistiques
+                        </li>
+                        <li data-view="achievements">
+                            <i class="fas fa-trophy"></i> Succès
+                        </li>
+                        <li data-view="profile">
+                            <i class="fas fa-user"></i> Profil
+                        </li>
+                    </ul>
+                    <div class="categories">
+                        <h3>Catégories</h3>
+                        <ul>
+                            <li data-category="toutes" class="active">
+                                Toutes
+                            </li>
+                            <li data-category="mot">
+                                <span class="category-color mot"></span> Mot
+                            </li>
+                            <li data-category="phrase">
+                                <span class="category-color phrase"></span> Phrase
+                            </li>
+                            <li data-category="idée">
+                                <span class="category-color idée"></span> Idée
+                            </li>
+                            <li data-category="réflexion">
+                                <span class="category-color réflexion"></span> Réflexion
+                            </li>
+                            <li data-category="histoire">
+                                <span class="category-color histoire"></span> Histoire
+                            </li>
+                            <li data-category="note">
+                                <span class="category-color note"></span> Note
+                            </li>
+                        </ul>
+                    </div>
+                </nav>
+                <div class="sidebar-footer">
+                    <button id="import-button">
+                        <i class="fas fa-file-import"></i> Importer
+                    </button>
+                    <button id="export-button">
+                        <i class="fas fa-file-export"></i> Exporter
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Zone de contenu -->
+            <div class="content-area">
+                <!-- Zone de saisie de note -->
+                <div class="note-input-container">
+                    <div class="note-input-header">
+                        <div class="category-selector">
+                            <select id="note-category">
+                                <option value="note">Note</option>
+                                <option value="mot">Mot</option>
+                                <option value="phrase">Phrase</option>
+                                <option value="idée">Idée</option>
+                                <option value="réflexion">Réflexion</option>
+                                <option value="histoire">Histoire</option>
+                            </select>
+                        </div>
+                        <div class="format-buttons">
+                            <button data-format="bold" title="Gras"><i class="fas fa-bold"></i></button>
+                            <button data-format="italic" title="Italique"><i class="fas fa-italic"></i></button>
+                            <button data-format="underline" title="Souligné"><i class="fas fa-underline"></i></button>
+                            <button data-format="bullet-list" title="Liste à puces"><i class="fas fa-list-ul"></i></button>
+                            <button data-format="numbered-list" title="Liste numérotée"><i class="fas fa-list-ol"></i></button>
+                        </div>
+                    </div>
+                    <textarea id="note-input" placeholder="Saisissez votre note ici..."></textarea>
+                    <div class="note-input-footer">
+                        <button id="save-note" class="primary-button">Enregistrer</button>
+                    </div>
+                </div>
+
+                <!-- Liste des notes -->
+                <div class="note-list-container">
+                    <h2 id="current-view-title">Toutes les notes</h2>
+                    <div id="notes-list">
+                        <!-- Notes générées dynamiquement par JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Calendrier (caché par défaut) -->
+                <div id="calendar-view" class="hidden">
+                    <div class="calendar-header">
+                        <button id="prev-month"><i class="fas fa-chevron-left"></i></button>
+                        <h2 id="calendar-title">Septembre 2023</h2>
+                        <button id="next-month"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="calendar-grid">
+                        <div class="weekday">Lun</div>
+                        <div class="weekday">Mar</div>
+                        <div class="weekday">Mer</div>
+                        <div class="weekday">Jeu</div>
+                        <div class="weekday">Ven</div>
+                        <div class="weekday">Sam</div>
+                        <div class="weekday">Dim</div>
+                        <!-- Jours générés dynamiquement par JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Paramètres (caché par défaut) -->
+                <div id="settings-view" class="hidden">
+                    <h2>Paramètres</h2>
+                    <div class="settings-section">
+                        <h3>Apparence</h3>
+                        <div class="setting-item">
+                            <span>Thème</span>
+                            <div class="theme-options">
+                                <button data-theme="light" class="theme-btn">Clair</button>
+                                <button data-theme="dark" class="theme-btn">Sombre</button>
+                                <button data-theme="system" class="theme-btn active">Système</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h3>Données</h3>
+                        <div class="setting-item">
+                            <span>Sauvegarder toutes les données</span>
+                            <button id="backup-button" class="secondary-button">Exporter</button>
+                        </div>
+                        <div class="setting-item">
+                            <span>Supprimer toutes les notes</span>
+                            <button id="clear-notes-button" class="danger-button">Supprimer</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vue Statistiques (cachée par défaut) -->
+                <div id="statistics-view" class="hidden">
+                    <h2>Statistiques</h2>
+                    <div class="stats-container">
+                        <div class="stats-card">
+                            <h3>Résumé</h3>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <span class="stat-value" id="total-notes-count">0</span>
+                                    <span class="stat-label">Notes</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value" id="total-words-count">0</span>
+                                    <span class="stat-label">Mots</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value" id="avg-length">0</span>
+                                    <span class="stat-label">Longueur moyenne</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value" id="streak-days">0</span>
+                                    <span class="stat-label">Jours consécutifs</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stats-card">
+                            <h3>Par catégorie</h3>
+                            <div class="category-stats" id="category-stats">
+                                <!-- Généré dynamiquement -->
+                            </div>
+                        </div>
+
+                        <div class="stats-card">
+                            <h3>Activité récente</h3>
+                            <div class="activity-chart" id="activity-chart">
+                                <!-- Généré dynamiquement -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vue Profil (cachée par défaut) -->
+                <div id="profile-view" class="hidden">
+                    <h2>Profil</h2>
+                    <div class="profile-card">
+                        <div class="profile-header">
+                            <div class="profile-avatar">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <div class="profile-info">
+                                <h3 id="profile-name">Luxin Enow</h3>
+                                <p id="profile-email">luxin5268@gmail.com</p>
+                                <p id="profile-joined">Membre depuis <span id="join-date">Janvier 2023</span></p>
+                            </div>
+                        </div>
+                        <div class="profile-stats">
+                            <div class="profile-stat-item">
+                                <span class="stat-value" id="profile-notes-count">0</span>
+                                <span class="stat-label">Notes</span>
+                            </div>
+                            <div class="profile-stat-item">
+                                <span class="stat-value" id="profile-streak">0</span>
+                                <span class="stat-label">Jours consécutifs</span>
+                            </div>
+                            <div class="profile-stat-item">
+                                <span class="stat-value" id="profile-achievements">0</span>
+                                <span class="stat-label">Succès</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vue Succès (cachée par défaut) -->
+                <div id="achievements-view" class="hidden">
+                    <h2>Succès</h2>
+                    
+                    <!-- Statistiques des succès -->
+                    <div class="achievements-stats">
+                        <div class="stats-card">
+                            <h3>Tableau des Succès</h3>
+                            <div class="achievements-progress">
+                                <div class="progress-header">
+                                    <span>Progression</span>
+                                    <span id="completion-percentage">0%</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-value" id="achievements-progress-bar"></div>
+                                </div>
+                                <div class="progress-details">
+                                    <span id="unlocked-count">0 sur 0 succès</span>
+                                    <span id="total-points">0 points</span>
+                                </div>
+                            </div>
+                            
+                            <div class="rarity-stats">
+                                <div class="rarity-grid">
+                                    <!-- Généré dynamiquement -->
+                                </div>
+                            </div>
+                            
+                            <h4>Progression par catégorie</h4>
+                            <div class="category-progress" id="achievement-categories">
+                                <!-- Généré dynamiquement -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Filtres -->
+                    <div class="achievements-filters">
+                        <div class="category-tabs">
+                            <button class="category-tab active" data-tab="all">Tous</button>
+                            <button class="category-tab" data-tab="écriture">✍️ Écriture</button>
+                            <button class="category-tab" data-tab="exploration">🔍 Exploration</button>
+                            <button class="category-tab" data-tab="collection">🗃️ Collection</button>
+                            <button class="category-tab" data-tab="maîtrise">🏆 Maîtrise</button>
+                        </div>
+                        
+                        <div class="rarity-filter">
+                            <label for="rarity-select">Rareté:</label>
+                            <select id="rarity-select">
+                                <option value="all">Toutes raretés</option>
+                                <option value="commun">Commun</option>
+                                <option value="rare">Rare</option>
+                                <option value="épique">Épique</option>
+                                <option value="légendaire">Légendaire</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Liste des succès -->
+                    <div class="achievements-grid" id="achievements-list">
+                        <!-- Généré dynamiquement -->
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modèles pour les éléments générés dynamiquement -->
+    <template id="note-template">
+        <div class="note-item" data-id="">
+            <div class="note-header">
+                <span class="note-category"></span>
+                <div class="note-actions">
+                    <button class="pin-note" title="Épingler"><i class="fas fa-thumbtack"></i></button>
+                    <button class="favorite-note" title="Ajouter aux favoris"><i class="far fa-star"></i></button>
+                    <button class="archive-note" title="Archiver"><i class="fas fa-archive"></i></button>
+                    <button class="edit-note" title="Modifier"><i class="fas fa-edit"></i></button>
+                    <button class="delete-note" title="Supprimer"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+            <div class="note-content"></div>
+            <div class="note-footer">
+                <span class="note-date"></span>
+            </div>
+        </div>
+    </template>
+
+    <template id="achievement-template">
+        <div class="achievement-card" data-id="">
+            <div class="achievement-rarity"></div>
+            <div class="achievement-category"></div>
+            <div class="achievement-icon"></div>
+            <div class="achievement-title"></div>
+            <div class="achievement-description"></div>
+            <div class="achievement-progress">
+                <div class="progress-bar">
+                    <div class="progress-value"></div>
+                </div>
+                <div class="progress-info">
+                    <span class="progress-percentage"></span>
+                    <span class="progress-status"></span>
+                </div>
+            </div>
+            <div class="achievement-points"></div>
+        </div>
+    </template>
+
+    <!-- Boîtes de dialogue -->
+    <div id="delete-confirm" class="modal hidden">
+        <div class="modal-content">
+            <h3>Confirmer la suppression</h3>
+            <p>Êtes-vous sûr de vouloir supprimer cette note ? Cette action est irréversible.</p>
+            <div class="modal-actions">
+                <button id="cancel-delete" class="secondary-button">Annuler</button>
+                <button id="confirm-delete" class="danger-button">Supprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="hidden"></div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
