@@ -90,6 +90,21 @@ export const logout = async (): Promise<void> => {
   }
 };
 
+// Mettre à jour le profil utilisateur
+export const updateUserProfile = async (displayName: string): Promise<void> => {
+  try {
+    checkAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('Aucun utilisateur connecté');
+    }
+    await updateProfile(currentUser, { displayName });
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du profil', error);
+    throw new Error('La mise à jour du profil a échoué');
+  }
+};
+
 // Réinitialiser le mot de passe
 export const resetPassword = async (email: string): Promise<void> => {
   try {

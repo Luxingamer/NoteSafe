@@ -31,6 +31,7 @@ export default function TopBar({
   
   // Obtenir les initiales de l'utilisateur
   const getInitials = (name: string) => {
+    if (!name) return ""; // Retourner une chaîne vide si name est undefined ou null
     return name.split(' ')
       .map(part => part.charAt(0).toUpperCase())
       .join('')
@@ -267,19 +268,99 @@ export default function TopBar({
                 </svg>
               </button>
               {/* Profil utilisateur réduit - remplace le bouton Nouvelle note */}
-              <button
-                onClick={() => triggerViewFilter('profile')}
-                className="flex items-center rounded-full bg-white/10 hover:bg-white/20 px-2 py-1"
-                title="Profil utilisateur"
-              >
-                <div className="w-7 h-7 rounded-full bg-gradient-to-r from-violet-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs mr-2">
-                  {getInitials(userInfo.name)}
-                </div>
-                <span className="text-white text-sm hidden sm:inline font-medium mr-1">{userInfo.firstName} {userInfo.lastName.charAt(0)}.</span>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-white/70">
-                  <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" />
-                </svg>
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="flex items-center rounded-full bg-white/10 hover:bg-white/20 px-2 py-1 transition-all duration-200"
+                  title="Profil utilisateur"
+                >
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-r from-violet-400 to-purple-500 flex items-center justify-center text-white font-bold text-xs mr-2">
+                    {getInitials(userInfo.name)}
+                  </div>
+                  <span className="text-white text-sm hidden sm:inline font-medium mr-1">{userInfo.firstName} {userInfo.lastName && userInfo.lastName.charAt(0)}.</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-white/70">
+                    <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z" />
+                  </svg>
+                </button>
+
+                {/* Menu déroulant du profil */}
+                {menuOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-50">
+                    {/* En-tête du profil */}
+                    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-violet-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                          {getInitials(userInfo.name)}
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{userInfo.firstName} {userInfo.lastName}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{userInfo.email}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Options du menu */}
+                    <div className="py-1">
+                      <button
+                        onClick={() => triggerViewFilter('profile')}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 w-full"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-3 text-blue-500">
+                          <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
+                        </svg>
+                        Mon Profil
+                      </button>
+                      <button
+                        onClick={() => triggerViewFilter('achievements')}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 w-full"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-3 text-yellow-500">
+                          <path d="M20,2H4V4L9.81,8.36C6.81,8.23 4,10.82 4,14A6,6 0 0,0 10,20C13.18,20 15.77,17.19 15.64,14.19L20,10V12H22V2H20M10,18A4,4 0 0,1 6,14C6,12.5 6.62,11.1 7.64,10.1L9.64,12.1C9.89,12.35 10.09,12.64 10.25,12.95C10.5,13.45 10.63,14 10.63,14.57C10.62,15.79 10,16.89 9,17.5V18H10Z" />
+                        </svg>
+                        Mes Succès
+                      </button>
+                      <button
+                        onClick={() => triggerViewFilter('statistics')}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 w-full"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-3 text-green-500">
+                          <path d="M19,3H5C3.9,3 3,3.9 3,5V19C3,20.1 3.9,21 5,21H19C20.1,21 21,20.1 21,19V5C21,3.9 20.1,3 19,3M9,17H7V10H9V17M13,17H11V7H13V17M17,17H15V13H17V17Z" />
+                        </svg>
+                        Statistiques
+                      </button>
+                      <button
+                        onClick={() => triggerViewFilter('settings')}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 w-full"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-3 text-gray-500">
+                          <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
+                        </svg>
+                        Paramètres
+                      </button>
+                    </div>
+
+                    {/* Séparateur */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+
+                    {/* Actions */}
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          // Déconnexion
+                          window.dispatchEvent(new CustomEvent('logout'));
+                          setMenuOpen(false);
+                        }}
+                        className="flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 w-full"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-3">
+                          <path d="M16,17V14H9V10H16V7L21,12L16,17M14,2A2,2 0 0,1 16,4V6H14V4H5V20H14V18H16V20A2,2 0 0,1 14,22H5A2,2 0 0,1 3,20V4A2,2 0 0,1 5,2H14Z" />
+                        </svg>
+                        Se déconnecter
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

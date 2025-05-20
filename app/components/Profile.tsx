@@ -11,19 +11,25 @@ export default function Profile() {
   const { notes } = useNotes();
   const { settings } = useSettings();
   const { userInfo, updateUserInfo } = useUser();
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserProfile } = useAuth();
   const [isEditMode, setIsEditMode] = useState(false);
   const [tempUser, setTempUser] = useState<UserInfo>(userInfo);
+  const [newDisplayName, setNewDisplayName] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
   
   useEffect(() => {
     setTempUser(userInfo);
-  }, [userInfo]);
+    setNewDisplayName(user?.displayName || userInfo.name);
+  }, [userInfo, user]);
   
   // Statistiques utilisateur
   const totalNotes = notes.length;
   const favoriteNotes = notes.filter(note => note.favorite).length;
   const archivedNotes = notes.filter(note => note.archived).length;
   const accountAge = userInfo.joined ? Math.floor((new Date().getTime() - userInfo.joined.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  const userPoints = userInfo.points || 0;
+  const userNotifications = userInfo.notifications || 0;
   
   // Générer les initiales
   const getInitials = (name: string) => {
@@ -39,6 +45,42 @@ export default function Profile() {
       // Redirection ou mise à jour de l'interface si nécessaire
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
+    }
+  };
+  
+  const handleEditName = () => {
+    setIsEditMode(true);
+  };
+  
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setNewDisplayName(user?.displayName || userInfo.name);
+    setUpdateError(null);
+  };
+  
+  const handleSaveName = async () => {
+    if (!newDisplayName.trim()) {
+      setUpdateError('Le nom ne peut pas être vide');
+      return;
+    }
+    
+    setIsUpdating(true);
+    setUpdateError(null);
+    
+    try {
+      await updateUserProfile(newDisplayName);
+      // Mettre à jour également les infos utilisateur dans UserContext
+      updateUserInfo({ 
+        name: newDisplayName,
+        firstName: newDisplayName.split(' ')[0] || newDisplayName,
+        lastName: newDisplayName.split(' ').slice(1).join(' ') || ''
+      });
+      setIsEditMode(false);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du nom:', error);
+      setUpdateError('Échec de la mise à jour du nom');
+    } finally {
+      setIsUpdating(false);
     }
   };
   
@@ -80,11 +122,53 @@ export default function Profile() {
         </div>
         
         <div className="pt-16 px-8 pb-8">
-          <div className="flex justify-between items-start">
+          <div className="flex justify-between items-start mb-2">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {userInfo.name}
-              </h2>
+              {isEditMode ? (
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center">
+                    <input
+                      type="text"
+                      value={newDisplayName}
+                      onChange={(e) => setNewDisplayName(e.target.value)}
+                      className="text-lg font-medium text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 mr-2"
+                    />
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleSaveName}
+                        disabled={isUpdating}
+                        className="text-sm bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg disabled:opacity-50"
+                      >
+                        {isUpdating ? 'Enregistrement...' : 'Enregistrer'}
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        disabled={isUpdating}
+                        className="text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-lg disabled:opacity-50"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                  {updateError && (
+                    <p className="text-red-500 text-sm">{updateError}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mr-2">
+                    {userInfo.name}
+                  </h2>
+                  <button
+                    onClick={handleEditName}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
+                    </svg>
+                  </button>
+                </div>
+              )}
               <p className="text-gray-500 dark:text-gray-400 mt-1">
                 Membre depuis {accountAge} jours
               </p>
@@ -110,31 +194,31 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Notes favorites */}
-        <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-[1.02] transition-all duration-300 hover:shadow-xl">
+        {/* Points gagnés */}
+        <div className="bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-[1.02] transition-all duration-300 hover:shadow-xl">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100">Favoris</p>
-              <h3 className="text-3xl font-bold mt-1">{favoriteNotes}</h3>
+              <p className="text-green-100">Points gagnés</p>
+              <h3 className="text-3xl font-bold mt-1">{userPoints}</h3>
             </div>
             <div className="bg-white/20 rounded-lg p-3">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z" />
+                <path d="M12,8L10.67,8.09C9.81,7.07 7.4,4.5 5,4.5C5,4.5 3.03,7.46 4.96,11.41C4.19,12.5 4,14.15 4,16C4,20 9.97,20.16 12,20.16C14.03,20.16 20,20 20,16C20,14.15 19.81,12.5 19.04,11.41C20.97,7.46 19,4.5 19,4.5C16.6,4.5 14.19,7.07 13.33,8.09L12,8M6.13,13.22L6.16,12.5L5.64,11.97C5.02,10.97 4.53,8.14 9.97,7.46C12.95,7.12 15.09,11.79 11.71,11.82C9.55,11.85 8.54,10.24 7.83,8.77C6.91,11.01 11.16,14.53 10.41,16C10.24,16.37 9.55,16.76 9.46,17C8.34,17 7.56,14.71 9.13,14.62C10.94,14.5 11.95,17.39 12.11,17.97C12.33,17.97 12.63,17.97 13,18C13.15,17.67 14.08,14.6 15.86,14.62C17.5,14.62 16.5,17 15.38,17C15.38,16.71 14.5,16.24 14.5,16C14.07,15.06 17.31,11.24 17,8.74C16.41,10.04 15.41,11.83 13.21,11.83C9.7,11.83 12.09,7.11 15.11,7.42C20.43,8 20.15,10.97 19.54,11.98L19.03,12.5L19.13,13.22C21.2,18.85 11.6,18.85 6.13,13.22Z" />
               </svg>
             </div>
           </div>
         </div>
 
-        {/* Notes archivées */}
+        {/* Notifications */}
         <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg transform hover:scale-[1.02] transition-all duration-300 hover:shadow-xl">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-amber-100">Archives</p>
-              <h3 className="text-3xl font-bold mt-1">{archivedNotes}</h3>
+              <p className="text-amber-100">Notifications</p>
+              <h3 className="text-3xl font-bold mt-1">{userNotifications}</h3>
             </div>
             <div className="bg-white/20 rounded-lg p-3">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3,3H21V7H3V3M4,8H20V21H4V8M9.5,11A0.5,0.5 0 0,0 9,11.5V13H15V11.5A0.5,0.5 0 0,0 14.5,11H9.5Z" />
+                <path d="M10,21H14A2,2 0 0,1 12,23A2,2 0 0,1 10,21M21,19V20H3V19L5,17V11C5,7.9 7.03,5.17 10,4.29C10,4.19 10,4.1 10,4A2,2 0 0,1 12,2A2,2 0 0,1 14,4C14,4.1 14,4.19 14,4.29C16.97,5.17 19,7.9 19,11V17L21,19M17,11A5,5 0 0,0 12,6A5,5 0 0,0 7,11V18H17V11M19.75,3.19L18.33,4.61C20.04,6.3 21,8.6 21,11H23C23,8.07 21.84,5.25 19.75,3.19M1,11H3C3,8.6 3.96,6.3 5.67,4.61L4.25,3.19C2.16,5.25 1,8.07 1,11Z" />
               </svg>
             </div>
           </div>

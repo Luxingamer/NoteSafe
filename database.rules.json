@@ -1,0 +1,26 @@
+{
+  "rules": {
+    "users": {
+      "$userId": {
+        ".read": "$userId === auth.uid",
+        ".write": "$userId === auth.uid",
+        "data": {
+          ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid",
+          ".validate": "newData.hasChildren(['points', 'transactions', 'lastDailyReward', 'theme', 'achievements', 'settings', 'lastUpdated'])"
+        }
+      }
+    },
+    "notes": {
+      "$userId": {
+        ".read": "$userId === auth.uid",
+        ".write": "$userId === auth.uid",
+        "$noteId": {
+          ".read": "$userId === auth.uid",
+          ".write": "$userId === auth.uid",
+          ".validate": "newData.hasChildren(['title', 'content', 'category', 'createdAt', 'updatedAt'])"
+        }
+      }
+    }
+  }
+}

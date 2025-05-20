@@ -2,9 +2,11 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { getUserData, updateUserData } from '../../firebase/userService';
 
 // Type pour les informations utilisateur
 export interface UserInfo {
+  id?: string; // ID utilisateur Firebase
   name: string;
   firstName: string;
   lastName: string;
@@ -15,20 +17,24 @@ export interface UserInfo {
   notificationsEnabled: boolean;
   lastLogin: Date;
   bio: string;
+  points?: number; // Points gagnés
+  notifications?: number; // Nombre de notifications
 }
 
 // Données utilisateur par défaut
 const defaultUserInfo: UserInfo = {
-  name: 'Luxin Enow',
-  firstName: 'Luxin',
-  lastName: 'Enow',
-  email: 'luxin5268@gmail.com',
+  name: 'Invité',
+  firstName: 'Invité',
+  lastName: '',
+  email: '',
   avatar: '',
-  joined: new Date('2023-05-15'),
-  plan: 'premium',
-  notificationsEnabled: true,
-  lastLogin: new Date('2023-11-02T10:30:00'),
-  bio: 'Écrivain passionné et créateur de contenu. J\'utilise NoteSafe pour organiser mes idées et documenter mes inspirations quotidiennes.'
+  joined: new Date(),
+  plan: 'basic',
+  notificationsEnabled: false,
+  lastLogin: new Date(),
+  bio: 'Utilisateur non connecté',
+  points: 0,
+  notifications: 0
 };
 
 // Type pour le contexte
@@ -71,17 +77,36 @@ const useSafeAuth = () => {
 // Provider du contexte
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [userInfo, setUserInfo] = useState<UserInfo>(defaultUserInfo);
+  const [userDataCache, setUserDataCache] = useState<Record<string, UserInfo>>({});
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   // Utiliser notre hook sécurisé
   const auth = useSafeAuth();
 
   // Mettre à jour les informations utilisateur
-  const updateUserInfo = (newInfo: Partial<UserInfo>) => {
+  const updateUserInfo = async (newInfo: Partial<UserInfo>) => {
     setUserInfo(prev => {
       // Si firstName ou lastName sont modifiés, mettre à jour le name complet
       const updatedInfo = { ...prev, ...newInfo };
       if (newInfo.firstName || newInfo.lastName) {
         updatedInfo.name = `${updatedInfo.firstName} ${updatedInfo.lastName}`;
       }
+      
+      // Si l'utilisateur est connecté, mettre à jour dans Firebase et le cache
+      if (auth.user && updatedInfo.id) {
+        const userId = updatedInfo.id as string;
+        
+        // Mettre à jour dans Firebase (asynchone, pas besoin d'attendre)
+        updateUserData(userId, updatedInfo).catch(error => {
+          console.error('Erreur lors de la mise à jour des données utilisateur:', error);
+        });
+        
+        // Mettre à jour le cache local
+        setUserDataCache(cache => ({
+          ...cache,
+          [userId]: updatedInfo
+        }));
+      }
+      
       return updatedInfo;
     });
   };
@@ -91,39 +116,26 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUserInfo(defaultUserInfo);
   };
 
-  // Synchroniser avec Firebase Auth si disponible
-  useEffect(() => {
-    const { user } = auth;
-    if (user) {
-      // Juste pour le mode démo, nous gardons les infos par défaut mais mettons à jour l'email
-      setUserInfo(prev => ({
-        ...prev,
-        email: user.email || prev.email,
-        name: user.displayName || prev.name
-      }));
-    }
-  }, [auth]);
-
-  // Sauvegarder dans localStorage
-  useEffect(() => {
+  // Sauvegarder utilisateur dans le localStorage par ID
+  const saveUserToLocalStorage = (userId: string, userData: UserInfo) => {
     try {
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
+      localStorage.setItem(`userInfo_${userId}`, JSON.stringify(userData));
     } catch (error) {
       console.error('Erreur lors de la sauvegarde des informations utilisateur:', error);
     }
-  }, [userInfo]);
+  };
 
-  // Charger depuis localStorage
-  useEffect(() => {
+  // Charger utilisateur du localStorage par ID
+  const loadUserFromLocalStorage = (userId: string): UserInfo | null => {
     try {
-      const savedInfo = localStorage.getItem('userInfo');
+      const savedInfo = localStorage.getItem(`userInfo_${userId}`);
       if (savedInfo) {
         try {
           const parsedInfo = JSON.parse(savedInfo);
           // Convertir les dates
           parsedInfo.joined = new Date(parsedInfo.joined);
           parsedInfo.lastLogin = new Date(parsedInfo.lastLogin);
-          setUserInfo(parsedInfo);
+          return parsedInfo;
         } catch (error) {
           console.error('Erreur lors du chargement des informations utilisateur:', error);
         }
@@ -131,11 +143,103 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Erreur lors de l\'accès à localStorage:', error);
     }
-  }, []);
+    return null;
+  };
+
+  // Synchroniser avec Firebase Auth si disponible
+  useEffect(() => {
+    const syncUserData = async () => {
+      const { user } = auth;
+      
+      if (user) {
+        const userId = user.uid;
+        setIsLoading(true);
+        
+        try {
+          // 1. D'abord essayer de récupérer depuis Firebase
+          let userData = await getUserData(userId);
+          
+          // 2. Si rien dans Firebase, essayer le cache
+          if (!userData) {
+            userData = userDataCache[userId];
+          }
+          
+          // 3. Si rien dans le cache, essayer localStorage
+          if (!userData) {
+            userData = loadUserFromLocalStorage(userId);
+          }
+          
+          // 4. Si toujours rien, créer un nouveau profil
+          if (!userData) {
+            userData = {
+              ...defaultUserInfo,
+              id: userId,
+              name: user.displayName || 'Utilisateur',
+              firstName: user.displayName?.split(' ')[0] || 'Utilisateur',
+              lastName: user.displayName?.split(' ').slice(1).join(' ') || '',
+              email: user.email || '',
+              joined: new Date(),
+              lastLogin: new Date(),
+              notifications: Math.floor(Math.random() * 5), // Valeur aléatoire pour la démo
+              points: Math.floor(Math.random() * 100) // Valeur aléatoire pour la démo
+            };
+            
+            // Créer dans Firebase
+            await updateUserData(userId, userData);
+          }
+          
+          // Toujours mettre à jour le nom et l'email depuis les données Firebase Auth
+          userData = {
+            ...userData,
+            name: user.displayName || userData.name,
+            email: user.email || userData.email,
+            lastLogin: new Date()
+          };
+          
+          // Mettre à jour dans Firebase
+          await updateUserData(userId, { lastLogin: new Date() });
+          
+          // Mettre à jour le state et le cache
+          setUserInfo(userData);
+          setUserDataCache(cache => ({
+            ...cache,
+            [userId]: userData as UserInfo
+          }));
+          
+          // Sauvegarder dans localStorage comme backup
+          saveUserToLocalStorage(userId, userData as UserInfo);
+        } catch (error) {
+          console.error('Erreur lors de la synchronisation du profil utilisateur:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        // Si déconnecté, réinitialiser aux valeurs par défaut
+        setUserInfo(defaultUserInfo);
+      }
+    };
+    
+    syncUserData();
+  }, [auth.user]);
+
+  // Sauvegarder les modifications dans Firebase et localStorage
+  useEffect(() => {
+    if (userInfo.id) {
+      const userId = userInfo.id as string;
+      
+      // Sauvegarder dans Firebase
+      updateUserData(userId, userInfo).catch(error => {
+        console.error('Erreur lors de la sauvegarde des données dans Firebase:', error);
+      });
+      
+      // Sauvegarder dans localStorage comme backup
+      saveUserToLocalStorage(userId, userInfo);
+    }
+  }, [userInfo]);
 
   return (
     <UserContext.Provider value={{ userInfo, updateUserInfo, resetUserInfo }}>
-      {children}
+      {!isLoading && children}
     </UserContext.Provider>
   );
 }; 

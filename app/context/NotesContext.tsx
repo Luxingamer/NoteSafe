@@ -205,6 +205,63 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [localNotes, isInitialized, user]);
 
+  // Gérer la transition entre le mode local et le mode cloud
+  useEffect(() => {
+    if (user && isInitialized) {
+      // L'utilisateur vient de se connecter
+      const syncLocalToCloud = async () => {
+        try {
+          // Récupérer les notes locales
+          const localNotes = localStorage.getItem('notes');
+          if (localNotes) {
+            const parsedLocalNotes = JSON.parse(localNotes);
+            // Convertir les dates
+            const notesWithDates = parsedLocalNotes.map((note: any) => ({
+              ...note,
+              createdAt: ensureValidDate(note.createdAt),
+              updatedAt: ensureValidDate(note.updatedAt),
+              trashedAt: note.trashedAt ? ensureValidDate(note.trashedAt) : undefined
+            }));
+
+            // Synchroniser avec Firebase
+            await syncNotes(user.uid, notesWithDates);
+            
+            // Vider le localStorage après la synchronisation
+            localStorage.removeItem('notes');
+          }
+        } catch (error) {
+          console.error('Erreur lors de la synchronisation des notes locales vers le cloud:', error);
+        }
+      };
+
+      syncLocalToCloud();
+    }
+  }, [user, isInitialized]);
+
+  // Gérer la déconnexion
+  useEffect(() => {
+    const handleLogout = async () => {
+      if (user) {
+        try {
+          // Sauvegarder les notes actuelles dans le localStorage avant la déconnexion
+          const currentNotes = queryClient.getQueryData<Note[]>(['notes', user.uid]) || [];
+          const notesToSave = currentNotes.map(note => ({
+            ...note,
+            createdAt: note.createdAt.toISOString(),
+            updatedAt: note.updatedAt.toISOString(),
+            trashedAt: note.trashedAt ? note.trashedAt.toISOString() : undefined
+          }));
+          localStorage.setItem('notes', JSON.stringify(notesToSave));
+        } catch (error) {
+          console.error('Erreur lors de la sauvegarde des notes avant déconnexion:', error);
+        }
+      }
+    };
+
+    window.addEventListener('logout', handleLogout);
+    return () => window.removeEventListener('logout', handleLogout);
+  }, [user, queryClient]);
+
   // Fonction pour ajouter une note
   const handleAddNote = useCallback((content: string, category: NoteCategory) => {
     const newNote = {
