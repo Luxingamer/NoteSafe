@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useNotes, NoteCategory } from '../context/NotesContext';
 import { useUser } from '../context/UserContext';
+import ConnectionStatus from './ConnectionStatus';
 
 interface TopBarProps {
   activeCategory: NoteCategory | 'toutes';
@@ -186,7 +187,19 @@ export default function TopBar({
           </div>
           
           {/* Recherche et Actions */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
+            {/* Statut de connexion */}
+            <div className="hidden md:block">
+              <ConnectionStatus />
+            </div>
+            
+            {/* Nom d'utilisateur */}
+            {userInfo?.firstName && (
+              <div className="hidden md:flex items-center text-white/90 text-sm font-medium ml-1">
+                {userInfo.firstName} {userInfo.lastName}
+              </div>
+            )}
+            
             {/* Formulaire de recherche */}
             <form className="relative hidden md:block" onSubmit={handleSearch}>
               <input 
@@ -228,15 +241,6 @@ export default function TopBar({
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                   <path d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => triggerViewFilter('recent')}
-                className="p-2 rounded-full hover:bg-white/10 text-cyan-300 hidden md:block"
-                title="Récents"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                  <path d="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3" />
                 </svg>
               </button>
               <button
@@ -441,13 +445,13 @@ export default function TopBar({
                   Favoris
                 </button>
                 <button 
-                  onClick={() => triggerViewFilter('recent')}
+                  onClick={() => triggerViewFilter('calendar')}
                   className="flex items-center px-3 py-2 rounded-lg text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 w-full hover:bg-gray-200 dark:hover:bg-gray-600"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-3 text-cyan-500">
-                    <path d="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3" />
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-3 text-orange-500">
+                    <path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z" />
                   </svg>
-                  Récents
+                  Calendrier
                 </button>
                 <button 
                   onClick={() => triggerViewFilter('archived')}
@@ -474,15 +478,6 @@ export default function TopBar({
             <div>
               <h3 className="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 mb-2">Sections</h3>
               <div className="space-y-2">
-                <button 
-                  onClick={() => triggerViewFilter('calendar')}
-                  className="flex items-center px-3 py-2 rounded-lg text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 w-full hover:bg-gray-200 dark:hover:bg-gray-600"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-3 text-orange-500">
-                    <path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z" />
-                  </svg>
-                  Calendrier
-                </button>
                 <button 
                   onClick={() => triggerViewFilter('statistics')}
                   className="flex items-center px-3 py-2 rounded-lg text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 w-full hover:bg-gray-200 dark:hover:bg-gray-600"

@@ -27,6 +27,7 @@ export interface Note {
   archived: boolean;
   synced?: boolean;
   trashedAt?: Date;
+  lastModified?: Date; // Ajouté pour le suivi des modifications
 }
 
 // Interface pour le contexte
@@ -41,6 +42,8 @@ interface NotesContextProps {
   toggleFavorite: (id: string) => void;
   isLoading: boolean;
   syncNotes: () => Promise<boolean>;
+  syncNotesToFirebase: () => Promise<boolean>; // Nouvelle méthode pour la synchronisation
+  loadNotesFromFirebase: () => Promise<void>; // Nouvelle méthode pour charger depuis Firebase
   hasPendingChanges: boolean;
   searchNotes: (searchTerm: string) => void;
   searchResults: Note[] | null;
@@ -59,6 +62,8 @@ const NotesContext = createContext<NotesContextProps>({
   toggleFavorite: () => {},
   isLoading: false,
   syncNotes: async () => false,
+  syncNotesToFirebase: async () => false,
+  loadNotesFromFirebase: async () => {},
   hasPendingChanges: false,
   searchNotes: () => {},
   searchResults: null,
@@ -432,6 +437,40 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     setSearchResults(results);
   }, [user, firebaseNotes, localNotes]);
 
+  // Méthode pour synchroniser les notes avec Firebase
+  const syncNotesToFirebase = async (): Promise<boolean> => {
+    if (!user) {
+      console.warn("Impossible de synchroniser les notes: utilisateur non connecté");
+      return false;
+    }
+
+    try {
+      // Utiliser la mutation existante pour synchroniser
+      const result = await syncNotesMutation.mutateAsync();
+      return result;
+    } catch (error) {
+      console.error("Erreur lors de la synchronisation des notes:", error);
+      return false;
+    }
+  };
+
+  // Méthode pour charger les notes depuis Firebase
+  const loadNotesFromFirebase = async (): Promise<void> => {
+    if (!user) {
+      console.warn("Impossible de charger les notes: utilisateur non connecté");
+      return;
+    }
+
+    try {
+      // Invalider la requête pour forcer un rechargement
+      await queryClient.invalidateQueries({ queryKey: ['notes', user.uid] });
+      // Recharger les données
+      await queryClient.fetchQuery({ queryKey: ['notes', user.uid] });
+    } catch (error) {
+      console.error("Erreur lors du chargement des notes depuis Firebase:", error);
+    }
+  };
+
   // Utilisez les données appropriées selon que l'utilisateur est connecté ou non
   const notesData = user ? firebaseNotes : localNotes;
   
@@ -451,6 +490,8 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
         toggleFavorite: handleToggleFavorite,
         isLoading,
         syncNotes: handleSyncNotes,
+        syncNotesToFirebase,
+        loadNotesFromFirebase,
         hasPendingChanges,
         searchNotes: handleSearchNotes,
         searchResults,

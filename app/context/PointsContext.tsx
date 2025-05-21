@@ -141,8 +141,21 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
       const last = lastDailyReward;
       
       if (!last || (now.getTime() - last.getTime()) >= 24 * 60 * 60 * 1000) {
-        addPoints(10, 'Récompense quotidienne', 'daily');
+        // Ajouter les points sans notification (la notification sera ajoutée dans addPoints)
+        const newTransaction: PointTransaction = {
+          id: crypto.randomUUID(),
+          amount: 10,
+          type: 'earned',
+          description: 'Récompense quotidienne',
+          timestamp: now,
+          category: 'daily'
+        };
+
+        setPoints(prev => prev + 10);
+        setTransactions(prev => [newTransaction, ...prev]);
         setLastDailyReward(now);
+        
+        // Ajouter la notification directement ici pour éviter le problème de duplication
         addNotification({
           type: 'success',
           title: 'Points quotidiens',
@@ -155,7 +168,7 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
     checkDailyReward();
     const interval = setInterval(checkDailyReward, 60 * 60 * 1000); // Vérifier toutes les heures
     return () => clearInterval(interval);
-  }, []);
+  }, []); // Retirer lastDailyReward des dépendances pour éviter la boucle
 
   const addPoints = (amount: number, description: string, category: PointTransaction['category']) => {
     const newTransaction: PointTransaction = {
@@ -169,6 +182,17 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
 
     setPoints(prev => prev + amount);
     setTransactions(prev => [newTransaction, ...prev]);
+
+    // Ajouter une notification pour tous les types de points SAUF daily
+    // (la notification pour les points quotidiens est gérée directement dans le useEffect)
+    if (category !== 'daily') {
+      addNotification({
+        type: 'success',
+        title: 'Points gagnés',
+        message: `Vous avez gagné ${amount} points pour : ${description}`,
+        action: 'points_earned'
+      });
+    }
   };
 
   const spendPoints = (amount: number, description: string, category: PointTransaction['category']): boolean => {

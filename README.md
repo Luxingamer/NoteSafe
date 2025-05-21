@@ -73,6 +73,12 @@ Débloquez des succès en utilisant les différentes fonctionnalités de l'appli
 - Confirmation de suppression personnalisable
 - Synchronisation multi-appareils avec Firebase
 - Authentification sécurisée
+- Détection automatique de connexion (en ligne/hors ligne)
+- Écran de chargement avec animations et particules flottantes
+- Affichage du nom complet de l'utilisateur dans l'interface
+- Système de notifications optimisé (sans duplication)
+- Indicateur de statut de connexion animé
+- Synchronisation intelligente des notes lors du retour en ligne
 
 ## Sécurité
 
@@ -81,6 +87,7 @@ Débloquez des succès en utilisant les différentes fonctionnalités de l'appli
 - Protection des données par utilisateur
 - Validation des entrées
 - Sessions sécurisées
+- Mode hors ligne sécurisé
 
 ## Technologies utilisées
 
@@ -90,6 +97,7 @@ Débloquez des succès en utilisant les différentes fonctionnalités de l'appli
 - Tailwind CSS
 - Firebase (Authentification + Realtime Database)
 - LocalStorage (mode hors ligne)
+- Framer Motion (animations)
 
 ## Contribution
 

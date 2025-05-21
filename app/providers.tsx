@@ -11,6 +11,7 @@ import { ThemeProvider } from 'next-themes';
 import { NotificationsProvider } from './context/NotificationsContext';
 import { BookProvider } from './context/BookContext';
 import { PointsProvider } from './context/PointsContext';
+import { ConnectionProvider } from './context/ConnectionContext';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -34,13 +35,15 @@ export default function Providers({ children }: ProvidersProps) {
             <NotificationsProvider>
               <SettingsProvider>
                 <NotesProvider>
-                  <AchievementsProvider>
-                    <PointsProvider>
-                      <BookProvider>
-                        {children}
-                      </BookProvider>
-                    </PointsProvider>
-                  </AchievementsProvider>
+                  <ConnectionProvider>
+                    <AchievementsProvider>
+                      <PointsProvider>
+                        <BookProvider>
+                          {children}
+                        </BookProvider>
+                      </PointsProvider>
+                    </AchievementsProvider>
+                  </ConnectionProvider>
                 </NotesProvider>
               </SettingsProvider>
             </NotificationsProvider>
