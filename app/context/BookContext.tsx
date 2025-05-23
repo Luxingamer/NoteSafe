@@ -22,12 +22,18 @@ export interface Book {
   updatedAt: Date;
   totalPages: number;
   currentPage: number;
+  bookType: 'text' | 'pdf';
+  pdfUrl?: string;
+  coverUrl?: string;
+  pdfData?: string; // Base64 data for offline storage (deprecated, use pdfUrl instead for better performance)
+  synced?: boolean;
 }
 
 interface BookContextProps {
   books: Book[];
   currentBook: Book | null;
   addBook: (title: string, description: string, coverColor: string) => void;
+  addPdfBook: (title: string, description: string, coverUrl: string | null, pdfData: string) => void;
   deleteBook: (id: string) => void;
   updateBook: (id: string, updates: Partial<Book>) => void;
   addPage: (bookId: string, content: string) => void;
@@ -35,6 +41,8 @@ interface BookContextProps {
   deletePage: (bookId: string, pageId: string) => void;
   setCurrentBook: (book: Book | null) => void;
   goToPage: (pageNumber: number) => void;
+  syncBooksToStorage: () => Promise<boolean>;
+  loadBooksFromStorage: () => Promise<boolean>;
 }
 
 const BookContext = createContext<BookContextProps | undefined>(undefined);
@@ -54,22 +62,7 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
 
   // Charger les livres depuis le localStorage
   useEffect(() => {
-    const storedBooks = localStorage.getItem('books');
-    if (storedBooks) {
-      const parsedBooks = JSON.parse(storedBooks);
-      // Convertir les dates de string en Date
-      const booksWithDates = parsedBooks.map((book: Book) => ({
-        ...book,
-        createdAt: new Date(book.createdAt),
-        updatedAt: new Date(book.updatedAt),
-        pages: book.pages.map(page => ({
-          ...page,
-          createdAt: new Date(page.createdAt),
-          updatedAt: new Date(page.updatedAt)
-        }))
-      }));
-      setBooks(booksWithDates);
-    }
+    loadBooksFromStorage();
   }, []);
 
   // Sauvegarder les livres dans le localStorage
@@ -87,7 +80,9 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date(),
       updatedAt: new Date(),
       totalPages: 0,
-      currentPage: 1
+      currentPage: 1,
+      bookType: 'text',
+      synced: false
     };
 
     setBooks(prev => [...prev, newBook]);
@@ -95,6 +90,32 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
       type: 'success',
       title: 'Livre créé',
       message: `Le livre "${title}" a été créé avec succès.`,
+      action: 'book_created'
+    });
+  };
+
+  const addPdfBook = (title: string, description: string, coverUrl: string | null, pdfData: string) => {
+    const newBook: Book = {
+      id: crypto.randomUUID(),
+      title,
+      description,
+      coverColor: '#6366f1', // Default color
+      coverUrl: coverUrl || undefined,
+      pages: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      totalPages: 0, // Will be updated after PDF loading
+      currentPage: 1,
+      bookType: 'pdf',
+      pdfData,
+      synced: false
+    };
+
+    setBooks(prev => [...prev, newBook]);
+    addNotification({
+      type: 'success',
+      title: 'Livre PDF importé',
+      message: `Le livre PDF "${title}" a été importé avec succès.`,
       action: 'book_created'
     });
   };
@@ -121,7 +142,8 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
         const updatedBook = {
           ...book,
           ...updates,
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          synced: false
         };
         if (currentBook?.id === id) {
           setCurrentBook(updatedBook);
@@ -146,7 +168,8 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
           ...book,
           pages: [...book.pages, newPage],
           totalPages: book.pages.length + 1,
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          synced: false
         };
         if (currentBook?.id === bookId) {
           setCurrentBook(updatedBook);
@@ -173,7 +196,8 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
         const updatedBook = {
           ...book,
           pages: updatedPages,
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          synced: false
         };
         if (currentBook?.id === bookId) {
           setCurrentBook(updatedBook);
@@ -198,7 +222,8 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
           pages: updatedPages,
           totalPages: updatedPages.length,
           currentPage: Math.min(book.currentPage, updatedPages.length),
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          synced: false
         };
         if (currentBook?.id === bookId) {
           setCurrentBook(updatedBook);
@@ -218,19 +243,65 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Synchroniser les livres avec le stockage
+  const syncBooksToStorage = async (): Promise<boolean> => {
+    try {
+      localStorage.setItem('books', JSON.stringify(books.map(book => ({
+        ...book,
+        synced: true
+      }))));
+      
+      // Marquer tous les livres comme synchronisés
+      setBooks(prev => prev.map(book => ({ ...book, synced: true })));
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de la synchronisation des livres:', error);
+      return false;
+    }
+  };
+
+  // Charger les livres depuis le stockage
+  const loadBooksFromStorage = async (): Promise<boolean> => {
+    try {
+      const storedBooks = localStorage.getItem('books');
+      if (storedBooks) {
+        const parsedBooks = JSON.parse(storedBooks);
+        // Convertir les dates de string en Date
+        const booksWithDates = parsedBooks.map((book: Book) => ({
+          ...book,
+          createdAt: new Date(book.createdAt),
+          updatedAt: new Date(book.updatedAt),
+          pages: book.pages?.map(page => ({
+            ...page,
+            createdAt: new Date(page.createdAt),
+            updatedAt: new Date(page.updatedAt)
+          })) || []
+        }));
+        setBooks(booksWithDates);
+      }
+      return true;
+    } catch (error) {
+      console.error('Erreur lors du chargement des livres:', error);
+      return false;
+    }
+  };
+
   return (
     <BookContext.Provider
       value={{
         books,
         currentBook,
         addBook,
+        addPdfBook,
         deleteBook,
         updateBook,
         addPage,
         updatePage,
         deletePage,
         setCurrentBook,
-        goToPage
+        goToPage,
+        syncBooksToStorage,
+        loadBooksFromStorage
       }}
     >
       {children}
