@@ -16,51 +16,80 @@ import { Note, NoteCategory } from '../app/context/NotesContext';
 // Référence à la collection de notes dans Realtime Database
 const NOTES_PATH = 'notes';
 
-// Interface pour une note dans la base de données
-export interface DatabaseNote extends Omit<Note, 'id' | 'createdAt' | 'updatedAt'> {
+// Interface pour les notes dans la base de données
+interface DatabaseNote {
+  content: string;
+  category: NoteCategory;
   userId: string;
+  favorite: boolean;
+  inTrash: boolean;
+  isPinned: boolean;
+  archived: boolean;
   createdAt: string;
   updatedAt: string;
+  trashedAt: string | null;
+  synced: boolean;
 }
 
+// Type pour une note sans ID
 export type NoteWithoutId = Omit<Note, 'id'>;
+
+// Fonction utilitaire pour convertir une note en format base de données
+const noteToDatabase = (note: Note | NoteWithoutId, userId: string): DatabaseNote => ({
+  content: note.content,
+  category: note.category || 'note',
+  userId,
+  favorite: note.favorite || false,
+  inTrash: note.inTrash || false,
+  isPinned: note.isPinned || false,
+  archived: note.archived || false,
+  createdAt: note.createdAt.toISOString(),
+  updatedAt: note.updatedAt.toISOString(),
+  trashedAt: note.trashedAt ? note.trashedAt.toISOString() : null,
+  synced: true
+});
+
+// Fonction utilitaire pour convertir une note de la base de données en note application
+const databaseToNote = (id: string, dbNote: DatabaseNote): Note => ({
+  id,
+  content: dbNote.content,
+  category: dbNote.category,
+  favorite: dbNote.favorite,
+  inTrash: dbNote.inTrash,
+  isPinned: dbNote.isPinned,
+  archived: dbNote.archived,
+  createdAt: new Date(dbNote.createdAt),
+  updatedAt: new Date(dbNote.updatedAt),
+  trashedAt: dbNote.trashedAt ? new Date(dbNote.trashedAt) : undefined,
+  synced: dbNote.synced
+});
 
 // Fonction utilitaire pour vérifier si la base de données est configurée
 const checkDb = () => {
   if (!db) {
-    throw new Error('La base de données n\'est pas configurée. Veuillez configurer vos identifiants Firebase dans le fichier .env.local');
+    throw new Error('La base de données n\'est pas configurée');
   }
 };
 
 // Obtenir toutes les notes d'un utilisateur
 export const getNotes = async (userId: string): Promise<Note[]> => {
   try {
-    // Si Firebase n'est pas configuré, retourner un tableau vide
-    if (!db) {
-      console.warn('La base de données n\'est pas configurée. Retour d\'un tableau vide.');
-      return [];
-    }
-
-    const notesRef = ref(db, NOTES_PATH);
-    const userNotesQuery = query(notesRef, orderByChild('userId'), equalTo(userId));
-    const snapshot = await get(userNotesQuery);
+    checkDb();
     
-    if (!snapshot.exists()) {
-      return [];
-    }
-
+    const notesRef = ref(db as Database, NOTES_PATH);
+    const snapshot = await get(notesRef);
     const notes: Note[] = [];
-    snapshot.forEach((childSnapshot) => {
-      const data = childSnapshot.val() as DatabaseNote;
-      notes.push({
-        ...data,
-        id: childSnapshot.key as string,
-        createdAt: new Date(data.createdAt),
-        updatedAt: new Date(data.updatedAt)
+    
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        const dbNote = childSnapshot.val() as DatabaseNote;
+        if (dbNote.userId === userId) {
+          notes.push(databaseToNote(childSnapshot.key as string, dbNote));
+        }
       });
-    });
-
-    return notes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
+    
+    return notes;
   } catch (error) {
     console.error('Erreur lors de la récupération des notes:', error);
     throw error;
@@ -74,26 +103,11 @@ export const addNote = async (userId: string, noteData: NoteWithoutId): Promise<
     
     const notesRef = ref(db as Database, NOTES_PATH);
     const newNoteRef = push(notesRef);
+    const cleanNote = noteToDatabase(noteData, userId);
     
-    const databaseNote: DatabaseNote = {
-      content: noteData.content,
-      category: noteData.category || 'note',
-      userId,
-      favorite: noteData.favorite || false,
-      inTrash: noteData.inTrash || false,
-      isPinned: noteData.isPinned || false,
-      archived: noteData.archived || false,
-      createdAt: noteData.createdAt.toISOString(),
-      updatedAt: noteData.updatedAt.toISOString(),
-      synced: true
-    };
+    await set(newNoteRef, cleanNote);
     
-    await set(newNoteRef, databaseNote);
-    
-    return {
-      id: newNoteRef.key as string,
-      ...noteData
-    };
+    return databaseToNote(newNoteRef.key as string, cleanNote);
   } catch (error) {
     console.error('Erreur lors de l\'ajout de la note:', error);
     throw error;
@@ -101,27 +115,25 @@ export const addNote = async (userId: string, noteData: NoteWithoutId): Promise<
 };
 
 // Mettre à jour une note existante
-export const updateNote = async (noteId: string, noteData: Partial<Note>): Promise<void> => {
+export const updateNote = async (noteId: string, updates: Partial<Note>): Promise<void> => {
   try {
     checkDb();
     
     const noteRef = ref(db as Database, `${NOTES_PATH}/${noteId}`);
     
-    const updateData: Partial<DatabaseNote> = {
-      ...noteData,
-      updatedAt: new Date().toISOString()
-    };
-    
-    if (noteData.createdAt) {
-      updateData.createdAt = noteData.createdAt.toISOString();
-    }
-    
-    // Supprimer l'id du payload de mise à jour
-    if ('id' in updateData) {
-      delete updateData.id;
-    }
-    
-    await update(noteRef, updateData);
+    // Convertir les dates en chaînes ISO et nettoyer les undefined
+    const cleanUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
+      if (value === undefined) {
+        acc[key] = null;
+      } else if (value instanceof Date) {
+        acc[key] = value.toISOString();
+      } else {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, any>);
+
+    await update(noteRef, cleanUpdates);
   } catch (error) {
     console.error('Erreur lors de la mise à jour de la note:', error);
     throw error;
@@ -156,45 +168,16 @@ export const syncNotes = async (userId: string, notes: Note[]): Promise<boolean>
     
     // 2. Pour chaque note locale
     for (const note of notes) {
+      const cleanNote = noteToDatabase(note, userId);
+
       if (note.id && existingNoteIds.has(note.id)) {
         // La note existe déjà dans la base de données, mise à jour
-        await updateNote(note.id, note);
+        const noteRef = ref(db as Database, `${NOTES_PATH}/${note.id}`);
+        await update(noteRef, cleanNote);
       } else {
-        // Nouvelle note à ajouter ou note sans ID
-        const newNote: NoteWithoutId = {
-          content: note.content,
-          category: note.category || 'note',
-          createdAt: note.createdAt,
-          updatedAt: new Date(),
-          favorite: note.favorite || false,
-          inTrash: note.inTrash || false,
-          isPinned: note.isPinned || false,
-          archived: note.archived || false
-        };
-        
-        if (note.id) {
-          // Utiliser l'ID existant pour la création
-          const noteRef = ref(db as Database, `${NOTES_PATH}/${note.id}`);
-          await set(noteRef, {
-            ...newNote,
-            userId,
-            createdAt: newNote.createdAt.toISOString(),
-            updatedAt: newNote.updatedAt.toISOString(),
-            synced: true
-          });
-        } else {
-          // Créer une nouvelle note avec un nouvel ID
-          await addNote(userId, newNote);
-        }
-      }
-    }
-    
-    // 3. Vérifier les notes à supprimer (présentes dans la base de données mais pas en local)
-    const localNoteIds = new Set(notes.map(note => note.id));
-    for (const existingNote of existingNotes) {
-      if (existingNote.id && !localNoteIds.has(existingNote.id)) {
-        // Cette note existe dans la base de données mais pas en local, la supprimer
-        await deleteNote(existingNote.id);
+        // Nouvelle note à ajouter
+        const noteRef = ref(db as Database, `${NOTES_PATH}/${note.id || push(ref(db as Database, NOTES_PATH)).key}`);
+        await set(noteRef, cleanNote);
       }
     }
     

@@ -5,6 +5,7 @@ import { useBooks, Book as BookType } from '../context/BookContext';
 import { usePoints, POINT_COSTS } from '../context/PointsContext';
 import DeleteConfirmation from './DeleteConfirmation';
 import PointCost from './PointCost';
+import BookTrash from './BookTrash';
 
 export default function Book() {
   const { books, currentBook, addBook, addPdfBook, deleteBook, updateBook, addPage, updatePage, deletePage, setCurrentBook, goToPage } = useBooks();
@@ -21,7 +22,7 @@ export default function Book() {
   const [bookToDelete, setBookToDelete] = useState<BookType | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'title'>('date');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'list' | 'trash'>('list');
   
   // États pour les PDF
   const [isImportingPdf, setIsImportingPdf] = useState(false);
@@ -163,150 +164,103 @@ export default function Book() {
       <div className="flex flex-col space-y-6">
         {/* En-tête avec les contrôles */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Bibliothèque</h1>
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Rechercher un livre..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-indigo-500"
-              />
-              <svg className="w-5 h-5 absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <div className="flex items-center space-x-2">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">Bibliothèque</h1>
+            <p className="text-gray-600 dark:text-gray-400">Gérez vos livres et documents</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center bg-white dark:bg-gray-800 rounded-lg shadow-sm p-1">
               <button
-                onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                title={viewMode === 'grid' ? 'Vue liste' : 'Vue grille'}
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-1.5 rounded-lg text-sm flex items-center transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
               >
-                {viewMode === 'grid' ? (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 13a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-                  </svg>
-                )}
-              </button>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'date' | 'title')}
-                className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-              >
-                <option value="date">Trier par date</option>
-                <option value="title">Trier par titre</option>
-              </select>
-              <button
-                onClick={() => setIsCreatingBook(true)}
-                className="relative px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                disabled={!canAfford(POINT_COSTS.ADD_BOOK)}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                 </svg>
-                <span>Nouveau livre</span>
-                <PointCost cost={POINT_COSTS.ADD_BOOK} />
+                Bibliothèque
               </button>
               <button
-                onClick={() => setIsImportingPdf(true)}
-                className="relative px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                disabled={!canAfford(POINT_COSTS.ADD_BOOK)}
+                onClick={() => setViewMode('trash')}
+                className={`px-3 py-1.5 rounded-lg text-sm flex items-center transition-colors ${
+                  viewMode === 'trash'
+                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                <span>Importer PDF</span>
-                <PointCost cost={POINT_COSTS.ADD_BOOK} />
+                Corbeille
               </button>
             </div>
+            {viewMode === 'list' && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsCreatingBook(true)}
+                  className="relative px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  disabled={!canAfford(POINT_COSTS.ADD_BOOK)}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  <span>Nouveau livre</span>
+                  <PointCost cost={POINT_COSTS.ADD_BOOK} />
+                </button>
+                <button
+                  onClick={() => setIsImportingPdf(true)}
+                  className="relative px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  disabled={!canAfford(POINT_COSTS.ADD_BOOK)}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <span>Importer PDF</span>
+                  <PointCost cost={POINT_COSTS.ADD_BOOK} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Affichage des livres */}
-        {!currentBook ? (
-          <div className={viewMode === 'grid' ? 
-            "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" : 
-            "flex flex-col space-y-4"
-          }>
-            {filteredAndSortedBooks.map(book => (
-              <div
-                key={book.id}
-                className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden transition-transform hover:scale-102 ${
-                  viewMode === 'grid' ? 'flex flex-col' : 'flex items-center space-x-4'
-                }`}
-                style={{
-                  borderLeft: `6px solid ${book.coverColor}`,
-                }}
-              >
-                {book.bookType === 'pdf' && book.coverUrl && (
-                  <div className={`${viewMode === 'grid' ? 'h-48' : 'h-32 w-24'} overflow-hidden flex-shrink-0`}>
-                    <img 
-                      src={book.coverUrl} 
-                      alt={`Couverture de ${book.title}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-                <div className="p-6 flex-1 min-w-0">
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2 truncate">{book.title}</h3>
-                      <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">{book.description}</p>
-                    </div>
-                    <div className="flex items-center space-x-2 flex-shrink-0">
-                      <button
-                        onClick={() => setCurrentBook(book)}
-                        className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        title="Ouvrir"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBook(book)}
-                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        title="Supprimer"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mt-4 text-sm text-gray-500 dark:text-gray-400">
-                    <div className="flex items-center space-x-2">
-                      <span>
-                        {book.bookType === 'pdf' ? (
-                          <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                          </svg>
-                        )}
-                        {book.totalPages || book.pages.length} pages
-                      </span>
-                      {!book.synced && (
-                        <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 rounded-full text-xs">
-                          Non synchronisé
-                        </span>
-                      )}
-                    </div>
-                    <span>Mis à jour le {new Date(book.updatedAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
+        {/* Barre de recherche et tri */}
+        {viewMode === 'list' && (
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Rechercher un livre..."
+                  className="w-full px-4 py-2 pl-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600"
+                />
+                <svg className="w-5 h-5 absolute left-3 top-2.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
               </div>
-            ))}
+            </div>
+            <div className="flex items-center space-x-4">
+              <label className="text-sm text-gray-600 dark:text-gray-400">Trier par :</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'date' | 'title')}
+                className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600"
+              >
+                <option value="date">Date de modification</option>
+                <option value="title">Titre</option>
+              </select>
+            </div>
           </div>
-        ) : (
+        )}
+
+        {/* Contenu principal */}
+        {viewMode === 'trash' ? (
+          <BookTrash />
+        ) : currentBook ? (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
             <div className="flex justify-between items-start mb-6">
               <div>
@@ -480,6 +434,91 @@ export default function Book() {
                 </div>
               </>
             )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {filteredAndSortedBooks.filter(book => !book.inTrash).map(book => (
+              <div 
+                key={book.id} 
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row"
+              >
+                {/* Couverture du livre */}
+                <div 
+                  className={`w-full md:w-48 h-32 md:h-auto flex-shrink-0 flex items-center justify-center text-4xl ${
+                    book.bookType === 'pdf' && book.coverUrl 
+                      ? '' 
+                      : 'bg-gradient-to-br'
+                  }`}
+                  style={
+                    book.bookType === 'pdf' && book.coverUrl
+                      ? {
+                          backgroundImage: `url(${book.coverUrl})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center'
+                        }
+                      : {
+                          background: book.coverColor
+                        }
+                  }
+                >
+                  {!(book.bookType === 'pdf' && book.coverUrl) && (
+                    book.bookType === 'pdf' ? '📄' : '📚'
+                  )}
+                </div>
+
+                <div className="p-6 flex-1 min-w-0">
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white truncate">{book.title}</h3>
+                        <span className={`px-2 py-0.5 text-xs rounded-full ${
+                          book.bookType === 'pdf' 
+                            ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                            : 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
+                        }`}>
+                          {book.bookType === 'pdf' ? 'PDF' : 'Livre'}
+                        </span>
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">{book.description}</p>
+                    </div>
+                    <div className="flex items-center space-x-2 flex-shrink-0">
+                      <button
+                        onClick={() => setCurrentBook(book)}
+                        className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        title="Ouvrir"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBook(book)}
+                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        title="Déplacer dans la corbeille"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-4 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center space-x-2">
+                      <span>
+                        {book.totalPages || book.pages.length} pages
+                      </span>
+                      {!book.synced && (
+                        <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 rounded-full text-xs">
+                          Non synchronisé
+                        </span>
+                      )}
+                    </div>
+                    <span>Mis à jour le {new Date(book.updatedAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

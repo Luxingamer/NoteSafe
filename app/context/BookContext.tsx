@@ -2,6 +2,15 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNotifications } from './NotificationsContext';
+import { useAuth } from './AuthContext';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  getBooks,
+  addBook as addFirebaseBook,
+  updateBook as updateFirebaseBook,
+  deleteBook as deleteFirebaseBook,
+  syncBooks
+} from '../../firebase/bookService';
 
 // Types pour la gestion des livres
 export interface Page {
@@ -25,8 +34,10 @@ export interface Book {
   bookType: 'text' | 'pdf';
   pdfUrl?: string;
   coverUrl?: string;
-  pdfData?: string; // Base64 data for offline storage (deprecated, use pdfUrl instead for better performance)
+  pdfData?: string;
   synced?: boolean;
+  inTrash?: boolean;
+  trashedAt?: Date;
 }
 
 interface BookContextProps {
@@ -43,36 +54,168 @@ interface BookContextProps {
   goToPage: (pageNumber: number) => void;
   syncBooksToStorage: () => Promise<boolean>;
   loadBooksFromStorage: () => Promise<boolean>;
+  restoreFromTrash: (id: string) => void;
+  permanentlyDeleteBook: (id: string) => void;
+  emptyTrash: () => void;
 }
 
-const BookContext = createContext<BookContextProps | undefined>(undefined);
+const BookContext = createContext<BookContextProps>({
+  books: [],
+  currentBook: null,
+  addBook: () => {},
+  addPdfBook: () => {},
+  deleteBook: () => {},
+  updateBook: () => {},
+  addPage: () => {},
+  updatePage: () => {},
+  deletePage: () => {},
+  setCurrentBook: () => {},
+  goToPage: () => {},
+  syncBooksToStorage: async () => false,
+  loadBooksFromStorage: async () => false,
+  restoreFromTrash: () => {},
+  permanentlyDeleteBook: () => {},
+  emptyTrash: () => {},
+});
 
-export function useBooks() {
+export const useBooks = () => {
   const context = useContext(BookContext);
   if (!context) {
     throw new Error('useBooks doit être utilisé à l\'intérieur d\'un BookProvider');
   }
   return context;
-}
+};
 
 export function BookProvider({ children }: { children: React.ReactNode }) {
-  const [books, setBooks] = useState<Book[]>([]);
+  const [localBooks, setLocalBooks] = useState<Book[]>([]);
   const [currentBook, setCurrentBook] = useState<Book | null>(null);
   const { addNotification } = useNotifications();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  // Charger les livres depuis le localStorage
-  useEffect(() => {
-    loadBooksFromStorage();
-  }, []);
+  // Récupérer les livres de Firebase
+  const { 
+    data: firebaseBooks = [], 
+    isLoading: isLoadingBooks 
+  } = useQuery({
+    queryKey: ['books', user?.uid],
+    queryFn: () => user ? getBooks(user.uid) : Promise.resolve([]),
+    enabled: !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
-  // Sauvegarder les livres dans le localStorage
+  // Mutations Firebase
+  const addBookMutation = useMutation({
+    mutationFn: async (newBook: Omit<Book, 'id'>) => {
+      if (!user) throw new Error('Utilisateur non connecté');
+      return await addFirebaseBook(user.uid, newBook);
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['books', user?.uid], (oldData: Book[] | undefined) => {
+        return oldData ? [data, ...oldData] : [data];
+      });
+    }
+  });
+
+  const updateBookMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string, updates: Partial<Book> }) => {
+      if (!user) throw new Error('Utilisateur non connecté');
+      await updateFirebaseBook(id, updates);
+      return { id, updates };
+    },
+    onSuccess: ({ id, updates }) => {
+      queryClient.setQueryData(['books', user?.uid], (oldData: Book[] | undefined) => {
+        if (!oldData) return [];
+        return oldData.map(book => book.id === id ? { ...book, ...updates } : book);
+      });
+    }
+  });
+
+  const deleteBookMutation = useMutation({
+    mutationFn: async (id: string) => {
+      if (!user) throw new Error('Utilisateur non connecté');
+      await deleteFirebaseBook(id);
+      return id;
+    },
+    onSuccess: (id) => {
+      queryClient.setQueryData(['books', user?.uid], (oldData: Book[] | undefined) => {
+        if (!oldData) return [];
+        return oldData.filter(book => book.id !== id);
+      });
+    }
+  });
+
+  // Charger les livres depuis le localStorage pour les utilisateurs non connectés
   useEffect(() => {
-    localStorage.setItem('books', JSON.stringify(books));
-  }, [books]);
+    if (!user) {
+      loadBooksFromStorage();
+    }
+  }, [user]);
+
+  // Sauvegarder les livres dans le localStorage pour les utilisateurs non connectés
+  useEffect(() => {
+    if (!user && localBooks.length > 0) {
+      localStorage.setItem('books', JSON.stringify(localBooks));
+    }
+  }, [localBooks, user]);
+
+  // Gérer la transition entre le mode local et le mode cloud
+  useEffect(() => {
+    if (user) {
+      // L'utilisateur vient de se connecter
+      const syncLocalToCloud = async () => {
+        try {
+          // Récupérer les livres locaux
+          const localBooks = localStorage.getItem('books');
+          if (localBooks) {
+            const parsedBooks = JSON.parse(localBooks);
+            // Convertir les dates
+            const booksWithDates = parsedBooks.map((book: any) => ({
+              ...book,
+              createdAt: new Date(book.createdAt),
+              updatedAt: new Date(book.updatedAt),
+              pages: book.pages?.map((page: any) => ({
+                ...page,
+                createdAt: new Date(page.createdAt),
+                updatedAt: new Date(page.updatedAt)
+              })) || []
+            }));
+
+            // Synchroniser avec Firebase
+            await syncBooks(user.uid, booksWithDates);
+            
+            // Vider le localStorage après la synchronisation
+            localStorage.removeItem('books');
+          }
+        } catch (error) {
+          console.error('Erreur lors de la synchronisation des livres locaux vers le cloud:', error);
+        }
+      };
+
+      syncLocalToCloud();
+    }
+  }, [user]);
+
+  // Gérer la déconnexion
+  useEffect(() => {
+    const handleLogout = async () => {
+      if (user) {
+        try {
+          // Sauvegarder les livres actuels dans le localStorage avant la déconnexion
+          const currentBooks = queryClient.getQueryData<Book[]>(['books', user.uid]) || [];
+          localStorage.setItem('books', JSON.stringify(currentBooks));
+        } catch (error) {
+          console.error('Erreur lors de la sauvegarde des livres avant déconnexion:', error);
+        }
+      }
+    };
+
+    window.addEventListener('logout', handleLogout);
+    return () => window.removeEventListener('logout', handleLogout);
+  }, [user, queryClient]);
 
   const addBook = (title: string, description: string, coverColor: string) => {
-    const newBook: Book = {
-      id: crypto.randomUUID(),
+    const newBook: Omit<Book, 'id'> = {
       title,
       description,
       coverColor,
@@ -85,7 +228,15 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
       synced: false
     };
 
-    setBooks(prev => [...prev, newBook]);
+    if (user) {
+      // Utiliser la mutation pour les utilisateurs connectés
+      addBookMutation.mutate(newBook);
+    } else {
+      // Utiliser le localStorage pour les utilisateurs non connectés
+      const id = crypto.randomUUID();
+      setLocalBooks(prev => [...prev, { id, ...newBook }]);
+    }
+
     addNotification({
       type: 'success',
       title: 'Livre créé',
@@ -95,23 +246,30 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addPdfBook = (title: string, description: string, coverUrl: string | null, pdfData: string) => {
-    const newBook: Book = {
-      id: crypto.randomUUID(),
+    const newBook: Omit<Book, 'id'> = {
       title,
       description,
-      coverColor: '#6366f1', // Default color
+      coverColor: '#6366f1',
       coverUrl: coverUrl || undefined,
       pages: [],
       createdAt: new Date(),
       updatedAt: new Date(),
-      totalPages: 0, // Will be updated after PDF loading
+      totalPages: 0,
       currentPage: 1,
       bookType: 'pdf',
       pdfData,
       synced: false
     };
 
-    setBooks(prev => [...prev, newBook]);
+    if (user) {
+      // Utiliser la mutation pour les utilisateurs connectés
+      addBookMutation.mutate(newBook);
+    } else {
+      // Utiliser le localStorage pour les utilisateurs non connectés
+      const id = crypto.randomUUID();
+      setLocalBooks(prev => [...prev, { id, ...newBook }]);
+    }
+
     addNotification({
       type: 'success',
       title: 'Livre PDF importé',
@@ -121,123 +279,128 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteBook = (id: string) => {
-    const book = books.find(b => b.id === id);
+    const book = (user ? firebaseBooks : localBooks).find(b => b.id === id);
     if (book) {
-      setBooks(prev => prev.filter(b => b.id !== id));
+      const updates = {
+        inTrash: true,
+        trashedAt: new Date()
+      };
+
+      if (user) {
+        // Utiliser la mutation pour les utilisateurs connectés
+        updateBookMutation.mutate({ id, updates });
+      } else {
+        // Utiliser le localStorage pour les utilisateurs non connectés
+        setLocalBooks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+      }
+
       if (currentBook?.id === id) {
         setCurrentBook(null);
       }
+
       addNotification({
         type: 'warning',
-        title: 'Livre supprimé',
-        message: `Le livre "${book.title}" a été supprimé.`,
-        action: 'book_deleted'
+        title: 'Livre déplacé dans la corbeille',
+        message: `Le livre "${book.title}" a été déplacé dans la corbeille.`,
+        action: 'book_moved_to_trash'
       });
     }
   };
 
   const updateBook = (id: string, updates: Partial<Book>) => {
-    setBooks(prev => prev.map(book => {
-      if (book.id === id) {
-        const updatedBook = {
-          ...book,
-          ...updates,
-          updatedAt: new Date(),
-          synced: false
-        };
-        if (currentBook?.id === id) {
-          setCurrentBook(updatedBook);
+    const updatedData = {
+      ...updates,
+      updatedAt: new Date(),
+      synced: false
+    };
+
+    if (user) {
+      // Utiliser la mutation pour les utilisateurs connectés
+      updateBookMutation.mutate({ id, updates: updatedData });
+    } else {
+      // Utiliser le localStorage pour les utilisateurs non connectés
+      setLocalBooks(prev => prev.map(book => {
+        if (book.id === id) {
+          const updatedBook = { ...book, ...updatedData };
+          if (currentBook?.id === id) {
+            setCurrentBook(updatedBook);
+          }
+          return updatedBook;
         }
-        return updatedBook;
-      }
-      return book;
-    }));
+        return book;
+      }));
+    }
   };
 
   const addPage = (bookId: string, content: string) => {
-    setBooks(prev => prev.map(book => {
-      if (book.id === bookId) {
-        const newPage: Page = {
-          id: crypto.randomUUID(),
-          content,
-          pageNumber: book.pages.length + 1,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-        const updatedBook = {
-          ...book,
-          pages: [...book.pages, newPage],
-          totalPages: book.pages.length + 1,
-          updatedAt: new Date(),
-          synced: false
-        };
-        if (currentBook?.id === bookId) {
-          setCurrentBook(updatedBook);
-        }
-        return updatedBook;
-      }
-      return book;
-    }));
+    const newPage: Page = {
+      id: crypto.randomUUID(),
+      content,
+      pageNumber: 0, // Sera mis à jour dans updateBook
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const books = user ? firebaseBooks : localBooks;
+    const book = books.find(b => b.id === bookId);
+    
+    if (book) {
+      const updatedPages = [...book.pages, { ...newPage, pageNumber: book.pages.length + 1 }];
+      updateBook(bookId, {
+        pages: updatedPages,
+        totalPages: updatedPages.length,
+        updatedAt: new Date()
+      });
+    }
   };
 
   const updatePage = (bookId: string, pageId: string, content: string) => {
-    setBooks(prev => prev.map(book => {
-      if (book.id === bookId) {
-        const updatedPages = book.pages.map(page => {
-          if (page.id === pageId) {
-            return {
-              ...page,
-              content,
-              updatedAt: new Date()
-            };
-          }
-          return page;
-        });
-        const updatedBook = {
-          ...book,
-          pages: updatedPages,
-          updatedAt: new Date(),
-          synced: false
-        };
-        if (currentBook?.id === bookId) {
-          setCurrentBook(updatedBook);
+    const books = user ? firebaseBooks : localBooks;
+    const book = books.find(b => b.id === bookId);
+    
+    if (book) {
+      const updatedPages = book.pages.map(page => {
+        if (page.id === pageId) {
+          return {
+            ...page,
+            content,
+            updatedAt: new Date()
+          };
         }
-        return updatedBook;
-      }
-      return book;
-    }));
+        return page;
+      });
+
+      updateBook(bookId, {
+        pages: updatedPages,
+        updatedAt: new Date()
+      });
+    }
   };
 
   const deletePage = (bookId: string, pageId: string) => {
-    setBooks(prev => prev.map(book => {
-      if (book.id === bookId) {
-        const updatedPages = book.pages
-          .filter(page => page.id !== pageId)
-          .map((page, index) => ({
-            ...page,
-            pageNumber: index + 1
-          }));
-        const updatedBook = {
-          ...book,
-          pages: updatedPages,
-          totalPages: updatedPages.length,
-          currentPage: Math.min(book.currentPage, updatedPages.length),
-          updatedAt: new Date(),
-          synced: false
-        };
-        if (currentBook?.id === bookId) {
-          setCurrentBook(updatedBook);
-        }
-        return updatedBook;
-      }
-      return book;
-    }));
+    const books = user ? firebaseBooks : localBooks;
+    const book = books.find(b => b.id === bookId);
+    
+    if (book) {
+      const updatedPages = book.pages
+        .filter(page => page.id !== pageId)
+        .map((page, index) => ({
+          ...page,
+          pageNumber: index + 1
+        }));
+
+      updateBook(bookId, {
+        pages: updatedPages,
+        totalPages: updatedPages.length,
+        currentPage: Math.min(book.currentPage, updatedPages.length),
+        updatedAt: new Date()
+      });
+    }
   };
 
   const goToPage = (pageNumber: number) => {
     if (currentBook) {
-      setCurrentBook({
-        ...currentBook,
+      updateBook(currentBook.id, {
         currentPage: Math.max(1, Math.min(pageNumber, currentBook.totalPages))
       });
     }
@@ -246,14 +409,22 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
   // Synchroniser les livres avec le stockage
   const syncBooksToStorage = async (): Promise<boolean> => {
     try {
-      localStorage.setItem('books', JSON.stringify(books.map(book => ({
-        ...book,
-        synced: true
-      }))));
-      
-      // Marquer tous les livres comme synchronisés
-      setBooks(prev => prev.map(book => ({ ...book, synced: true })));
-      return true;
+      if (user) {
+        // Synchroniser avec Firebase
+        const success = await syncBooks(user.uid, firebaseBooks);
+        if (success) {
+          queryClient.invalidateQueries({ queryKey: ['books', user.uid] });
+        }
+        return success;
+      } else {
+        // Synchroniser avec le localStorage
+        localStorage.setItem('books', JSON.stringify(localBooks.map(book => ({
+          ...book,
+          synced: true
+        }))));
+        setLocalBooks(prev => prev.map(book => ({ ...book, synced: true })));
+        return true;
+      }
     } catch (error) {
       console.error('Erreur lors de la synchronisation des livres:', error);
       return false;
@@ -277,7 +448,7 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
             updatedAt: new Date(page.updatedAt)
           })) || []
         }));
-        setBooks(booksWithDates);
+        setLocalBooks(booksWithDates);
       }
       return true;
     } catch (error) {
@@ -285,6 +456,65 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
   };
+
+  const restoreFromTrash = (id: string) => {
+    const book = (user ? firebaseBooks : localBooks).find(b => b.id === id);
+    if (book) {
+      const updates = {
+        inTrash: false,
+        trashedAt: undefined
+      };
+
+      if (user) {
+        // Utiliser la mutation pour les utilisateurs connectés
+        updateBookMutation.mutate({ id, updates });
+      } else {
+        // Utiliser le localStorage pour les utilisateurs non connectés
+        setLocalBooks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+      }
+
+      addNotification({
+        type: 'success',
+        title: 'Livre restauré',
+        message: `Le livre "${book.title}" a été restauré de la corbeille.`,
+        action: 'book_restored'
+      });
+    }
+  };
+
+  const permanentlyDeleteBook = (id: string) => {
+    const book = (user ? firebaseBooks : localBooks).find(b => b.id === id);
+    if (book) {
+      if (user) {
+        // Utiliser la mutation pour les utilisateurs connectés
+        deleteBookMutation.mutate(id);
+      } else {
+        // Utiliser le localStorage pour les utilisateurs non connectés
+        setLocalBooks(prev => prev.filter(b => b.id !== id));
+      }
+
+      if (currentBook?.id === id) {
+        setCurrentBook(null);
+      }
+
+      addNotification({
+        type: 'error',
+        title: 'Livre supprimé définitivement',
+        message: `Le livre "${book.title}" a été supprimé définitivement.`,
+        action: 'book_deleted'
+      });
+    }
+  };
+
+  const emptyTrash = () => {
+    const booksInTrash = (user ? firebaseBooks : localBooks).filter(b => b.inTrash);
+    booksInTrash.forEach(book => {
+      permanentlyDeleteBook(book.id);
+    });
+  };
+
+  // Utiliser les données appropriées selon que l'utilisateur est connecté ou non
+  const books = user ? firebaseBooks : localBooks;
 
   return (
     <BookContext.Provider
@@ -301,7 +531,10 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
         setCurrentBook,
         goToPage,
         syncBooksToStorage,
-        loadBooksFromStorage
+        loadBooksFromStorage,
+        restoreFromTrash,
+        permanentlyDeleteBook,
+        emptyTrash
       }}
     >
       {children}

@@ -67,12 +67,17 @@ export type NotificationAction =
   | 'book_page_added'
   | 'book_page_updated'
   | 'book_page_deleted'
+  | 'book_moved_to_trash'
+  | 'book_restored'
+  | 'book_category_changed'
 
   // Actions liées aux points
   | 'daily_points'
   | 'points_earned'
   | 'points_spent'
-  | 'insufficient_points';
+  | 'insufficient_points'
+  | 'daily_reward'
+  | 'error';
 
 export interface NotificationItem {
   id: string;

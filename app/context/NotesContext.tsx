@@ -79,6 +79,13 @@ export const useNotes = () => {
   return context;
 };
 
+// Fonction utilitaire pour valider et convertir les dates
+const ensureValidDate = (date: Date | string | undefined): Date | undefined => {
+  if (!date) return undefined;
+  const d = new Date(date);
+  return isNaN(d.getTime()) ? undefined : d;
+};
+
 // Provider component
 export function NotesProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -160,13 +167,6 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  // Fonction pour valider et convertir une date
-  const ensureValidDate = (date: any): Date => {
-    if (date instanceof Date) return date;
-    if (typeof date === 'string') return new Date(date);
-    return new Date();
-  };
-
   // Gestion du localStorage pour les utilisateurs non connectés
   useEffect(() => {
     if (!isInitialized) {
@@ -179,8 +179,8 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
             // Convertir toutes les dates en objets Date avec validation
             const notesWithDates = parsedNotes.map((note: any) => ({
               ...note,
-              createdAt: ensureValidDate(note.createdAt),
-              updatedAt: ensureValidDate(note.updatedAt),
+              createdAt: ensureValidDate(note.createdAt) || new Date(),
+              updatedAt: ensureValidDate(note.updatedAt) || new Date(),
               trashedAt: note.trashedAt ? ensureValidDate(note.trashedAt) : undefined
             }));
             setLocalNotes(notesWithDates);
@@ -254,7 +254,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
             ...note,
             createdAt: note.createdAt.toISOString(),
             updatedAt: note.updatedAt.toISOString(),
-            trashedAt: note.trashedAt ? note.trashedAt.toISOString() : undefined
+            trashedAt: note.trashedAt ? ensureValidDate(note.trashedAt)?.toISOString() : undefined
           }));
           localStorage.setItem('notes', JSON.stringify(notesToSave));
         } catch (error) {
