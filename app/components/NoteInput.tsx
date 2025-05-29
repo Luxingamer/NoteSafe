@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, RefObject } from 'react';
 import { useNotes, NoteCategory } from '../context/NotesContext';
 import { motion } from 'framer-motion';
+import { usePoints, POINT_COSTS } from '../context/PointsContext';
 
 interface NoteInputProps {
   inputRef?: RefObject<HTMLTextAreaElement>;
@@ -16,6 +17,7 @@ export default function NoteInput({ inputRef, activeCategory = 'toutes' }: NoteI
   const [isAnimating, setIsAnimating] = useState(true);
   const localInputRef = useRef<HTMLTextAreaElement>(null);
   const { addNote } = useNotes();
+  const { addPoints } = usePoints();
   
   // Référence finale (utiliser la référence passée en prop ou la référence locale)
   const finalInputRef = inputRef || localInputRef;
@@ -44,16 +46,40 @@ export default function NoteInput({ inputRef, activeCategory = 'toutes' }: NoteI
     }
   }, [input, finalInputRef]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) {
-      addNote(input.trim(), category);
-      setInput('');
-      
-      // Réinitialiser la hauteur
-      if (finalInputRef.current) {
-        finalInputRef.current.style.height = 'auto';
-      }
+    
+    if (!input.trim()) return;
+    
+    // Vérifier si c'est la première note du jour
+    const lastNoteDate = localStorage.getItem('last_note_date');
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    
+    if (!lastNoteDate || lastNoteDate !== today) {
+      addPoints(POINT_COSTS.FIRST_NOTE_OF_DAY, 'Première note du jour', 'daily');
+      localStorage.setItem('last_note_date', today);
+    }
+    
+    // Points bonus pour les notes longues (plus de 100 mots)
+    const wordCount = input.trim().split(/\s+/).length;
+    if (wordCount > 100) {
+      addPoints(POINT_COSTS.LONG_NOTE_BONUS, 'Note longue (plus de 100 mots)', 'daily');
+    }
+    
+    // Points bonus pour l'utilisation d'une nouvelle catégorie
+    const usedCategories = JSON.parse(localStorage.getItem('used_categories') || '[]');
+    if (!usedCategories.includes(category)) {
+      addPoints(POINT_COSTS.CATEGORY_BONUS, `Première utilisation de la catégorie ${category}`, 'daily');
+      localStorage.setItem('used_categories', JSON.stringify([...usedCategories, category]));
+    }
+    
+    addNote(input.trim(), category);
+    setInput('');
+    
+    // Réinitialiser la hauteur
+    if (finalInputRef.current) {
+      finalInputRef.current.style.height = 'auto';
     }
   };
 

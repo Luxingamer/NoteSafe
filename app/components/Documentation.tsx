@@ -135,28 +135,27 @@ export default function Documentation() {
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Bienvenue sur NoteSafe</h2>
               <p className="text-gray-600 dark:text-gray-300">
                 NoteSafe est une application moderne et sécurisée pour prendre des notes, capturer vos idées et organiser vos pensées. 
-                Conçue pour être à la fois simple et puissante, NoteSafe vous permet de :
+                L'application nécessite une authentification Firebase pour fonctionner, ce qui garantit la sécurité et la synchronisation 
+                de vos notes sur tous vos appareils.
               </p>
               <ul className="list-disc pl-6 space-y-2 text-gray-600 dark:text-gray-300">
-                <li>Créer et organiser des notes dans différentes catégories</li>
-                <li>Formater vos notes avec du texte riche (gras, italique, listes, etc.)</li>
-                <li>Marquer vos notes importantes comme favorites</li>
-                <li>Archiver les notes que vous souhaitez conserver mais ne plus voir régulièrement</li>
-                <li>Visualiser vos notes dans un calendrier</li>
-                <li>Suivre vos habitudes d'écriture avec des statistiques</li>
-                <li>Personnaliser l'interface avec différents thèmes</li>
-                <li>Importer et exporter vos notes</li>
-                <li>Recevoir des notifications sur les activités importantes</li>
+                <li>Authentification sécurisée avec Firebase</li>
+                <li>Synchronisation en temps réel de vos notes</li>
+                <li>Création et organisation des notes par catégories</li>
+                <li>Formatage du texte (gras, italique, listes, etc.)</li>
+                <li>Marquage des notes importantes comme favorites</li>
+                <li>Archivage des notes moins utilisées</li>
+                <li>Visualisation dans un calendrier</li>
+                <li>Statistiques d'utilisation</li>
+                <li>Personnalisation de l'interface</li>
+                <li>Notifications pour les activités importantes</li>
               </ul>
-              <p className="text-gray-600 dark:text-gray-300">
-                Cette documentation vous guidera à travers toutes les fonctionnalités de NoteSafe pour vous aider
-                à tirer le meilleur parti de l'application.
-              </p>
               <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                 <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300 mb-2">Pour commencer</h3>
                 <p className="text-blue-600 dark:text-blue-300">
-                  Cliquez sur l'icône <span className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">+</span> en haut ou commencez à taper dans le champ "Qu'avez-vous en tête ?" 
-                  sur la page d'accueil pour créer votre première note.
+                  Connectez-vous avec votre compte ou créez-en un nouveau. Une fois connecté, vous pourrez commencer à créer des notes 
+                  en cliquant sur l'icône <span className="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">+</span> ou en 
+                  commençant à taper dans le champ "Qu'avez-vous en tête ?".
                 </p>
               </div>
             </div>
@@ -166,7 +165,7 @@ export default function Documentation() {
             <div className="space-y-4">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Interface utilisateur</h2>
               <p className="text-gray-600 dark:text-gray-300">
-                L'interface de NoteSafe est conçue pour être intuitive et facile à utiliser. Voici les principaux éléments de l'interface :
+                L'interface de NoteSafe est conçue pour être intuitive et facile à utiliser. Voici les principaux éléments :
               </p>
               
               <div className="space-y-6 mt-4">
@@ -176,11 +175,24 @@ export default function Documentation() {
                     Située en haut de l'application, elle contient :
                   </p>
                   <ul className="list-disc pl-6 space-y-1 text-gray-600 dark:text-gray-300">
-                    <li>Le logo NoteSafe (cliquez dessus pour revenir à l'accueil)</li>
-                    <li>Les filtres de catégories (Toutes, Mots, Phrases, Idées, Réflexions, Histoires)</li>
+                    <li>Le logo NoteSafe (retour à {"l'accueil"})</li>
+                    <li>Les filtres de catégories</li>
                     <li>La barre de recherche</li>
-                    <li>Les boutons d'actions rapides (Créer, Importer, Exporter)</li>
-                    <li>L'accès aux paramètres</li>
+                    <li>Le menu utilisateur avec {"l'option"} de changement de compte</li>
+                  </ul>
+                </div>
+
+                <div className="border dark:border-gray-700 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Menu utilisateur</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-2">
+                    Le menu utilisateur vous permet de :
+                  </p>
+                  <ul className="list-disc pl-6 space-y-1 text-gray-600 dark:text-gray-300">
+                    <li>Voir votre profil</li>
+                    <li>Accéder à vos succès</li>
+                    <li>Consulter vos statistiques</li>
+                    <li>Modifier les paramètres</li>
+                    <li>Changer de compte</li>
                   </ul>
                 </div>
 
@@ -197,47 +209,6 @@ export default function Documentation() {
                     <li><span className="text-amber-400">Succès</span> - Pour suivre vos accomplissements</li>
                   </ul>
                 </div>
-
-                <div className="border dark:border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Zone de saisie</h3>
-                  <p className="text-gray-600 dark:text-gray-300 mb-2">
-                    La zone principale pour créer de nouvelles notes comprend :
-                  </p>
-                  <ul className="list-disc pl-6 space-y-1 text-gray-600 dark:text-gray-300">
-                    <li>Un champ de texte pour saisir votre note</li>
-                    <li>Des options de formatage (gras, italique, souligné, listes)</li>
-                    <li>Un sélecteur de catégorie</li>
-                    <li>Un bouton pour enregistrer la note</li>
-                  </ul>
-                </div>
-
-                <div className="border dark:border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Liste de notes</h3>
-                  <p className="text-gray-600 dark:text-gray-300 mb-2">
-                    Affiche toutes vos notes avec :
-                  </p>
-                  <ul className="list-disc pl-6 space-y-1 text-gray-600 dark:text-gray-300">
-                    <li>Le contenu de la note</li>
-                    <li>La date de création/modification</li>
-                    <li>La catégorie</li>
-                    <li>Des boutons d'action (Favoris, Modifier, Supprimer, Archiver)</li>
-                  </ul>
-                </div>
-
-                <div className="border dark:border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Bouton Accueil</h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Présent dans les modes filtrés ou spéciaux, il vous permet de revenir rapidement à la vue principale de toutes vos notes.
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg mt-6">
-                <h3 className="text-lg font-semibold text-amber-700 dark:text-amber-300 mb-2">Astuce</h3>
-                <p className="text-amber-600 dark:text-amber-300">
-                  Vous pouvez changer l'apparence de NoteSafe en accédant aux Paramètres et en sélectionnant un thème différent.
-                  Essayez les thèmes Bleu, Vert, Orange, Rouge ou Sombre Élégant pour personnaliser votre expérience.
-                </p>
               </div>
             </div>
           )}
@@ -698,78 +669,40 @@ export default function Documentation() {
           )}
           
           {activeSection === 'faq' && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Questions fréquentes</h2>
-              <p className="text-gray-600 dark:text-gray-300">
-                Retrouvez les réponses aux questions les plus courantes sur NoteSafe.
-              </p>
               
-              <div className="mt-6 space-y-6">
+              <div className="space-y-4">
                 <div className="border dark:border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Mes notes sont-elles sécurisées ?</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">
+                    Pourquoi dois-je me connecter pour utiliser l'application ?
+                  </h3>
                   <p className="text-gray-600 dark:text-gray-300">
-                    Oui, NoteSafe utilise un chiffrement de bout en bout pour protéger vos notes. Seul vous pouvez y accéder avec votre
-                    identifiant et mot de passe. De plus, vous pouvez activer l'authentification à deux facteurs dans les paramètres pour
-                    une sécurité renforcée.
+                    L'authentification est obligatoire pour garantir la sécurité de vos notes et permettre leur synchronisation 
+                    entre vos différents appareils. Cela vous permet également d'accéder à vos notes depuis n'importe où et de 
+                    ne jamais les perdre.
                   </p>
                 </div>
-                
+
                 <div className="border dark:border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Puis-je accéder à mes notes hors ligne ?</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">
+                    Comment changer de compte ?
+                  </h3>
                   <p className="text-gray-600 dark:text-gray-300">
-                    Oui, NoteSafe est conçu pour fonctionner hors ligne. Vos notes sont synchronisées automatiquement lorsque vous êtes connecté
-                    à Internet, mais vous pouvez les consulter et les modifier même sans connexion. Les modifications seront synchronisées
-                    lors de votre prochaine connexion.
+                    Pour changer de compte, cliquez sur votre avatar dans la barre supérieure, puis sélectionnez "Changer de compte" 
+                    dans le menu. Vous pourrez alors vous connecter avec un autre compte ou en créer un nouveau.
                   </p>
                 </div>
-                
+
                 <div className="border dark:border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Comment récupérer une note supprimée ?</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">
+                    Mes notes sont-elles sécurisées ?
+                  </h3>
                   <p className="text-gray-600 dark:text-gray-300">
-                    Les notes supprimées sont conservées dans la corbeille pendant 30 jours. Pour récupérer une note, accédez à la 
-                    corbeille dans les paramètres et cliquez sur "Restaurer" à côté de la note que vous souhaitez récupérer.
-                    Après 30 jours, les notes sont définitivement supprimées.
+                    Oui, vos notes sont stockées de manière sécurisée dans Firebase et ne sont accessibles qu'avec votre compte. 
+                    La synchronisation se fait en temps réel et de manière chiffrée.
                   </p>
                 </div>
-                
-                <div className="border dark:border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Existe-t-il une limite au nombre de notes ?</h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    La version gratuite de NoteSafe vous permet de créer jusqu'à 100 notes. Pour un stockage illimité, vous pouvez
-                    passer à NoteSafe Premium, qui offre également des fonctionnalités supplémentaires comme des options de formatage avancées,
-                    des thèmes exclusifs et la priorité pour les nouvelles fonctionnalités.
-                  </p>
-                </div>
-                
-                <div className="border dark:border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">NoteSafe est-il disponible sur mobile ?</h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Oui, NoteSafe est disponible sur iOS et Android. Téléchargez l'application depuis l'App Store ou Google Play
-                    pour accéder à vos notes depuis n'importe où. Toutes vos notes sont automatiquement synchronisées entre vos appareils.
-                  </p>
-                </div>
-                
-                <div className="border dark:border-gray-700 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Comment contacter le support ?</h3>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Pour toute question ou problème, vous pouvez contacter notre équipe de support via :
-                  </p>
-                  <ul className="list-disc pl-6 space-y-1 text-gray-600 dark:text-gray-300 mt-2">
-                    <li>Email : support@notesafe.com</li>
-                    <li>Chat en direct : disponible depuis les paramètres</li>
-                    <li>Centre d'aide : help.notesafe.com</li>
-                  </ul>
-                  <p className="mt-2 text-gray-600 dark:text-gray-300">
-                    Notre équipe s'engage à répondre à toutes les demandes dans un délai de 24 heures.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mt-6">
-                <h3 className="text-lg font-semibold text-green-700 dark:text-green-300 mb-2">Vous avez d'autres questions ?</h3>
-                <p className="text-green-600 dark:text-green-300">
-                  Consultez notre centre d'aide complet ou contactez-nous directement. Nous sommes là pour vous aider !
-                </p>
               </div>
             </div>
           )}

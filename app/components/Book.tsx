@@ -261,7 +261,7 @@ export default function Book() {
         {viewMode === 'trash' ? (
           <BookTrash />
         ) : currentBook ? (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transform transition-all duration-300 ease-in-out">
             <div className="flex justify-between items-start mb-6">
               <div>
                 <div className="flex items-center space-x-4">
@@ -440,11 +440,11 @@ export default function Book() {
             {filteredAndSortedBooks.filter(book => !book.inTrash).map(book => (
               <div 
                 key={book.id} 
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row"
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row transform transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-xl"
               >
                 {/* Couverture du livre */}
                 <div 
-                  className={`w-full md:w-48 h-32 md:h-auto flex-shrink-0 flex items-center justify-center text-4xl ${
+                  className={`w-full md:w-48 h-32 md:h-auto flex-shrink-0 flex items-center justify-center text-4xl transition-all duration-300 ease-in-out ${
                     book.bookType === 'pdf' && book.coverUrl 
                       ? '' 
                       : 'bg-gradient-to-br'
@@ -484,7 +484,7 @@ export default function Book() {
                     <div className="flex items-center space-x-2 flex-shrink-0">
                       <button
                         onClick={() => setCurrentBook(book)}
-                        className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
                         title="Ouvrir"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -494,7 +494,7 @@ export default function Book() {
                       </button>
                       <button
                         onClick={() => handleDeleteBook(book)}
-                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
                         title="Déplacer dans la corbeille"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -505,9 +505,12 @@ export default function Book() {
                   </div>
                   <div className="flex items-center justify-between mt-4 text-sm text-gray-500 dark:text-gray-400">
                     <div className="flex items-center space-x-2">
-                      <span>
-                        {book.totalPages || book.pages.length} pages
-                      </span>
+                      {/* Afficher le nombre de pages uniquement pour les livres non-PDF */}
+                      {book.bookType !== 'pdf' && (
+                        <span>
+                          {book.pages.length} pages
+                        </span>
+                      )}
                       {!book.synced && (
                         <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 rounded-full text-xs">
                           Non synchronisé

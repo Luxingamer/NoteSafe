@@ -50,14 +50,14 @@ const bookToDatabase = (book: BookWithoutId | Book, userId: string): DatabaseBoo
   title: book.title,
   description: book.description,
   coverColor: book.coverColor,
-  coverUrl: book.coverUrl,
-  pdfUrl: book.pdfUrl,
-  pdfData: book.pdfData,
+  coverUrl: book.coverUrl || '',
+  pdfUrl: book.pdfUrl || '',
+  pdfData: book.pdfData || '',
   pages: book.pages?.map(page => ({
     ...page,
     createdAt: page.createdAt.toISOString(),
     updatedAt: page.updatedAt.toISOString()
-  })),
+  })) || [],
   createdAt: book.createdAt.toISOString(),
   updatedAt: book.updatedAt.toISOString(),
   totalPages: book.totalPages,
@@ -66,7 +66,7 @@ const bookToDatabase = (book: BookWithoutId | Book, userId: string): DatabaseBoo
   userId,
   synced: true,
   inTrash: book.inTrash || false,
-  trashedAt: book.trashedAt ? book.trashedAt.toISOString() : null
+  trashedAt: book.trashedAt ? book.trashedAt.toISOString() : ''
 });
 
 // Fonction utilitaire pour convertir un livre de la base de données en livre application

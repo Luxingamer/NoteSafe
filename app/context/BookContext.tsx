@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { useNotifications } from './NotificationsContext';
 import { useAuth } from './AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -8,8 +8,7 @@ import {
   getBooks,
   addBook as addFirebaseBook,
   updateBook as updateFirebaseBook,
-  deleteBook as deleteFirebaseBook,
-  syncBooks
+  deleteBook as deleteFirebaseBook
 } from '../../firebase/bookService';
 
 // Types pour la gestion des livres
@@ -52,8 +51,6 @@ interface BookContextProps {
   deletePage: (bookId: string, pageId: string) => void;
   setCurrentBook: (book: Book | null) => void;
   goToPage: (pageNumber: number) => void;
-  syncBooksToStorage: () => Promise<boolean>;
-  loadBooksFromStorage: () => Promise<boolean>;
   restoreFromTrash: (id: string) => void;
   permanentlyDeleteBook: (id: string) => void;
   emptyTrash: () => void;
@@ -71,8 +68,6 @@ const BookContext = createContext<BookContextProps>({
   deletePage: () => {},
   setCurrentBook: () => {},
   goToPage: () => {},
-  syncBooksToStorage: async () => false,
-  loadBooksFromStorage: async () => false,
   restoreFromTrash: () => {},
   permanentlyDeleteBook: () => {},
   emptyTrash: () => {},
@@ -87,7 +82,6 @@ export const useBooks = () => {
 };
 
 export function BookProvider({ children }: { children: React.ReactNode }) {
-  const [localBooks, setLocalBooks] = useState<Book[]>([]);
   const [currentBook, setCurrentBook] = useState<Book | null>(null);
   const { addNotification } = useNotifications();
   const { user } = useAuth();
@@ -95,7 +89,7 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
 
   // Récupérer les livres de Firebase
   const { 
-    data: firebaseBooks = [], 
+    data: books = [], 
     isLoading: isLoadingBooks 
   } = useQuery({
     queryKey: ['books', user?.uid],
@@ -145,76 +139,17 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  // Charger les livres depuis le localStorage pour les utilisateurs non connectés
-  useEffect(() => {
-    if (!user) {
-      loadBooksFromStorage();
-    }
-  }, [user]);
-
-  // Sauvegarder les livres dans le localStorage pour les utilisateurs non connectés
-  useEffect(() => {
-    if (!user && localBooks.length > 0) {
-      localStorage.setItem('books', JSON.stringify(localBooks));
-    }
-  }, [localBooks, user]);
-
-  // Gérer la transition entre le mode local et le mode cloud
-  useEffect(() => {
-    if (user) {
-      // L'utilisateur vient de se connecter
-      const syncLocalToCloud = async () => {
-        try {
-          // Récupérer les livres locaux
-          const localBooks = localStorage.getItem('books');
-          if (localBooks) {
-            const parsedBooks = JSON.parse(localBooks);
-            // Convertir les dates
-            const booksWithDates = parsedBooks.map((book: any) => ({
-              ...book,
-              createdAt: new Date(book.createdAt),
-              updatedAt: new Date(book.updatedAt),
-              pages: book.pages?.map((page: any) => ({
-                ...page,
-                createdAt: new Date(page.createdAt),
-                updatedAt: new Date(page.updatedAt)
-              })) || []
-            }));
-
-            // Synchroniser avec Firebase
-            await syncBooks(user.uid, booksWithDates);
-            
-            // Vider le localStorage après la synchronisation
-            localStorage.removeItem('books');
-          }
-        } catch (error) {
-          console.error('Erreur lors de la synchronisation des livres locaux vers le cloud:', error);
-        }
-      };
-
-      syncLocalToCloud();
-    }
-  }, [user]);
-
-  // Gérer la déconnexion
-  useEffect(() => {
-    const handleLogout = async () => {
-      if (user) {
-        try {
-          // Sauvegarder les livres actuels dans le localStorage avant la déconnexion
-          const currentBooks = queryClient.getQueryData<Book[]>(['books', user.uid]) || [];
-          localStorage.setItem('books', JSON.stringify(currentBooks));
-        } catch (error) {
-          console.error('Erreur lors de la sauvegarde des livres avant déconnexion:', error);
-        }
-      }
-    };
-
-    window.addEventListener('logout', handleLogout);
-    return () => window.removeEventListener('logout', handleLogout);
-  }, [user, queryClient]);
-
   const addBook = (title: string, description: string, coverColor: string) => {
+    if (!user) {
+      addNotification({
+        type: 'error',
+        title: 'Connexion requise',
+        message: 'Vous devez être connecté pour créer un livre.',
+        action: 'auth_login'
+      });
+      return;
+    }
+
     const newBook: Omit<Book, 'id'> = {
       title,
       description,
@@ -228,14 +163,7 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
       synced: false
     };
 
-    if (user) {
-      // Utiliser la mutation pour les utilisateurs connectés
-      addBookMutation.mutate(newBook);
-    } else {
-      // Utiliser le localStorage pour les utilisateurs non connectés
-      const id = crypto.randomUUID();
-      setLocalBooks(prev => [...prev, { id, ...newBook }]);
-    }
+    addBookMutation.mutate(newBook);
 
     addNotification({
       type: 'success',
@@ -246,11 +174,21 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addPdfBook = (title: string, description: string, coverUrl: string | null, pdfData: string) => {
+    if (!user) {
+      addNotification({
+        type: 'error',
+        title: 'Connexion requise',
+        message: 'Vous devez être connecté pour importer un livre PDF.',
+        action: 'auth_login'
+      });
+      return;
+    }
+
     const newBook: Omit<Book, 'id'> = {
       title,
       description,
       coverColor: '#6366f1',
-      coverUrl: coverUrl || undefined,
+      coverUrl: coverUrl || '',
       pages: [],
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -261,14 +199,7 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
       synced: false
     };
 
-    if (user) {
-      // Utiliser la mutation pour les utilisateurs connectés
-      addBookMutation.mutate(newBook);
-    } else {
-      // Utiliser le localStorage pour les utilisateurs non connectés
-      const id = crypto.randomUUID();
-      setLocalBooks(prev => [...prev, { id, ...newBook }]);
-    }
+    addBookMutation.mutate(newBook);
 
     addNotification({
       type: 'success',
@@ -279,20 +210,24 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteBook = (id: string) => {
-    const book = (user ? firebaseBooks : localBooks).find(b => b.id === id);
+    if (!user) {
+      addNotification({
+        type: 'error',
+        title: 'Connexion requise',
+        message: 'Vous devez être connecté pour supprimer un livre.',
+        action: 'auth_login'
+      });
+      return;
+    }
+
+    const book = books.find(b => b.id === id);
     if (book) {
       const updates = {
         inTrash: true,
         trashedAt: new Date()
       };
 
-      if (user) {
-        // Utiliser la mutation pour les utilisateurs connectés
-        updateBookMutation.mutate({ id, updates });
-      } else {
-        // Utiliser le localStorage pour les utilisateurs non connectés
-        setLocalBooks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
-      }
+      updateBookMutation.mutate({ id, updates });
 
       if (currentBook?.id === id) {
         setCurrentBook(null);
@@ -308,42 +243,45 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateBook = (id: string, updates: Partial<Book>) => {
+    if (!user) {
+      addNotification({
+        type: 'error',
+        title: 'Connexion requise',
+        message: 'Vous devez être connecté pour modifier un livre.',
+        action: 'auth_login'
+      });
+      return;
+    }
+
     const updatedData = {
       ...updates,
       updatedAt: new Date(),
       synced: false
     };
 
-    if (user) {
-      // Utiliser la mutation pour les utilisateurs connectés
-      updateBookMutation.mutate({ id, updates: updatedData });
-    } else {
-      // Utiliser le localStorage pour les utilisateurs non connectés
-      setLocalBooks(prev => prev.map(book => {
-        if (book.id === id) {
-          const updatedBook = { ...book, ...updatedData };
-          if (currentBook?.id === id) {
-            setCurrentBook(updatedBook);
-          }
-          return updatedBook;
-        }
-        return book;
-      }));
-    }
+    updateBookMutation.mutate({ id, updates: updatedData });
   };
 
   const addPage = (bookId: string, content: string) => {
+    if (!user) {
+      addNotification({
+        type: 'error',
+        title: 'Connexion requise',
+        message: 'Vous devez être connecté pour ajouter une page.',
+        action: 'auth_login'
+      });
+      return;
+    }
+
     const newPage: Page = {
       id: crypto.randomUUID(),
       content,
-      pageNumber: 0, // Sera mis à jour dans updateBook
+      pageNumber: 0,
       createdAt: new Date(),
       updatedAt: new Date()
     };
 
-    const books = user ? firebaseBooks : localBooks;
     const book = books.find(b => b.id === bookId);
-    
     if (book) {
       const updatedPages = [...book.pages, { ...newPage, pageNumber: book.pages.length + 1 }];
       updateBook(bookId, {
@@ -355,9 +293,17 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updatePage = (bookId: string, pageId: string, content: string) => {
-    const books = user ? firebaseBooks : localBooks;
+    if (!user) {
+      addNotification({
+        type: 'error',
+        title: 'Connexion requise',
+        message: 'Vous devez être connecté pour modifier une page.',
+        action: 'auth_login'
+      });
+      return;
+    }
+
     const book = books.find(b => b.id === bookId);
-    
     if (book) {
       const updatedPages = book.pages.map(page => {
         if (page.id === pageId) {
@@ -378,9 +324,17 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deletePage = (bookId: string, pageId: string) => {
-    const books = user ? firebaseBooks : localBooks;
+    if (!user) {
+      addNotification({
+        type: 'error',
+        title: 'Connexion requise',
+        message: 'Vous devez être connecté pour supprimer une page.',
+        action: 'auth_login'
+      });
+      return;
+    }
+
     const book = books.find(b => b.id === bookId);
-    
     if (book) {
       const updatedPages = book.pages
         .filter(page => page.id !== pageId)
@@ -399,6 +353,16 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
   };
 
   const goToPage = (pageNumber: number) => {
+    if (!user) {
+      addNotification({
+        type: 'error',
+        title: 'Connexion requise',
+        message: 'Vous devez être connecté pour naviguer dans un livre.',
+        action: 'auth_login'
+      });
+      return;
+    }
+
     if (currentBook) {
       updateBook(currentBook.id, {
         currentPage: Math.max(1, Math.min(pageNumber, currentBook.totalPages))
@@ -406,72 +370,25 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Synchroniser les livres avec le stockage
-  const syncBooksToStorage = async (): Promise<boolean> => {
-    try {
-      if (user) {
-        // Synchroniser avec Firebase
-        const success = await syncBooks(user.uid, firebaseBooks);
-        if (success) {
-          queryClient.invalidateQueries({ queryKey: ['books', user.uid] });
-        }
-        return success;
-      } else {
-        // Synchroniser avec le localStorage
-        localStorage.setItem('books', JSON.stringify(localBooks.map(book => ({
-          ...book,
-          synced: true
-        }))));
-        setLocalBooks(prev => prev.map(book => ({ ...book, synced: true })));
-        return true;
-      }
-    } catch (error) {
-      console.error('Erreur lors de la synchronisation des livres:', error);
-      return false;
-    }
-  };
-
-  // Charger les livres depuis le stockage
-  const loadBooksFromStorage = async (): Promise<boolean> => {
-    try {
-      const storedBooks = localStorage.getItem('books');
-      if (storedBooks) {
-        const parsedBooks = JSON.parse(storedBooks);
-        // Convertir les dates de string en Date
-        const booksWithDates = parsedBooks.map((book: Book) => ({
-          ...book,
-          createdAt: new Date(book.createdAt),
-          updatedAt: new Date(book.updatedAt),
-          pages: book.pages?.map(page => ({
-            ...page,
-            createdAt: new Date(page.createdAt),
-            updatedAt: new Date(page.updatedAt)
-          })) || []
-        }));
-        setLocalBooks(booksWithDates);
-      }
-      return true;
-    } catch (error) {
-      console.error('Erreur lors du chargement des livres:', error);
-      return false;
-    }
-  };
-
   const restoreFromTrash = (id: string) => {
-    const book = (user ? firebaseBooks : localBooks).find(b => b.id === id);
+    if (!user) {
+      addNotification({
+        type: 'error',
+        title: 'Connexion requise',
+        message: 'Vous devez être connecté pour restaurer un livre.',
+        action: 'auth_login'
+      });
+      return;
+    }
+
+    const book = books.find(b => b.id === id);
     if (book) {
       const updates = {
         inTrash: false,
         trashedAt: undefined
       };
 
-      if (user) {
-        // Utiliser la mutation pour les utilisateurs connectés
-        updateBookMutation.mutate({ id, updates });
-      } else {
-        // Utiliser le localStorage pour les utilisateurs non connectés
-        setLocalBooks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
-      }
+      updateBookMutation.mutate({ id, updates });
 
       addNotification({
         type: 'success',
@@ -483,15 +400,19 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
   };
 
   const permanentlyDeleteBook = (id: string) => {
-    const book = (user ? firebaseBooks : localBooks).find(b => b.id === id);
+    if (!user) {
+      addNotification({
+        type: 'error',
+        title: 'Connexion requise',
+        message: 'Vous devez être connecté pour supprimer définitivement un livre.',
+        action: 'auth_login'
+      });
+      return;
+    }
+
+    const book = books.find(b => b.id === id);
     if (book) {
-      if (user) {
-        // Utiliser la mutation pour les utilisateurs connectés
-        deleteBookMutation.mutate(id);
-      } else {
-        // Utiliser le localStorage pour les utilisateurs non connectés
-        setLocalBooks(prev => prev.filter(b => b.id !== id));
-      }
+      deleteBookMutation.mutate(id);
 
       if (currentBook?.id === id) {
         setCurrentBook(null);
@@ -507,14 +428,21 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
   };
 
   const emptyTrash = () => {
-    const booksInTrash = (user ? firebaseBooks : localBooks).filter(b => b.inTrash);
+    if (!user) {
+      addNotification({
+        type: 'error',
+        title: 'Connexion requise',
+        message: 'Vous devez être connecté pour vider la corbeille.',
+        action: 'auth_login'
+      });
+      return;
+    }
+
+    const booksInTrash = books.filter(b => b.inTrash);
     booksInTrash.forEach(book => {
       permanentlyDeleteBook(book.id);
     });
   };
-
-  // Utiliser les données appropriées selon que l'utilisateur est connecté ou non
-  const books = user ? firebaseBooks : localBooks;
 
   return (
     <BookContext.Provider
@@ -530,14 +458,25 @@ export function BookProvider({ children }: { children: React.ReactNode }) {
         deletePage,
         setCurrentBook,
         goToPage,
-        syncBooksToStorage,
-        loadBooksFromStorage,
         restoreFromTrash,
         permanentlyDeleteBook,
         emptyTrash
       }}
     >
-      {children}
+      {!user ? (
+        <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+          <div className="text-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+              Connexion requise
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Vous devez être connecté pour accéder à vos livres.
+            </p>
+          </div>
+        </div>
+      ) : (
+        children
+      )}
     </BookContext.Provider>
   );
 } 

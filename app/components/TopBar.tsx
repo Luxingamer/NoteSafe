@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNotes, NoteCategory } from '../context/NotesContext';
 import { useUser } from '../context/UserContext';
 import ConnectionStatus from './ConnectionStatus';
+import { useClickOutside } from '../hooks/useClickOutside';
+import AccountModal from './AccountModal';
 
 interface TopBarProps {
   activeCategory: NoteCategory | 'toutes';
@@ -28,7 +30,13 @@ export default function TopBar({
 }: TopBarProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { userInfo } = useUser();
+  
+  useClickOutside(menuRef as React.RefObject<HTMLElement>, () => {
+    setMenuOpen(false);
+  });
   
   // Obtenir les initiales de l'utilisateur
   const getInitials = (name: string) => {
@@ -272,7 +280,7 @@ export default function TopBar({
                 </svg>
               </button>
               {/* Profil utilisateur réduit - remplace le bouton Nouvelle note */}
-              <div className="relative">
+              <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen(!menuOpen)}
                   className="flex items-center rounded-full bg-white/10 hover:bg-white/20 px-2 py-1 transition-all duration-200"
@@ -350,16 +358,16 @@ export default function TopBar({
                     <div className="py-1">
                       <button
                         onClick={() => {
-                          // Déconnexion
                           window.dispatchEvent(new CustomEvent('logout'));
                           setMenuOpen(false);
+                          setIsAccountModalOpen(true);
                         }}
-                        className="flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 w-full"
+                        className="flex items-center px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 w-full"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 mr-3">
-                          <path d="M16,17V14H9V10H16V7L21,12L16,17M14,2A2,2 0 0,1 16,4V6H14V4H5V20H14V18H16V20A2,2 0 0,1 14,22H5A2,2 0 0,1 3,20V4A2,2 0 0,1 5,2H14Z" />
+                          <path d="M17,7H22V17H17V19A1,1 0 0,0 18,20H20V22H17.5C16.95,22 16,21.55 16,21C16,21.55 15.05,22 14.5,22H12V20H14A1,1 0 0,0 15,19V5A1,1 0 0,0 14,4H12V2H14.5C15.05,2 16,2.45 16,3C16,2.45 16.95,2 17.5,2H20V4H18A1,1 0 0,0 17,5V7M2,7H13V9H4V15H13V17H2V7M20,15V9H17V15H20Z" />
                         </svg>
-                        Se déconnecter
+                        Changer de compte
                       </button>
                     </div>
                   </div>
@@ -511,6 +519,12 @@ export default function TopBar({
           </div>
         </div>
       )}
+
+      {/* Modal de connexion */}
+      <AccountModal 
+        isOpen={isAccountModalOpen} 
+        onClose={() => setIsAccountModalOpen(false)} 
+      />
     </>
   );
 } 

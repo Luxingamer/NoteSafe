@@ -1,6 +1,6 @@
 # NoteSafe
 
-Une application de prise de notes sécurisée et moderne.
+Une application de prise de notes sécurisée et moderne, avec authentification Firebase obligatoire.
 
 ## Configuration Firebase
 
@@ -23,17 +23,17 @@ NEXT_PUBLIC_FIREBASE_APP_ID=votre_app_id
 NEXT_PUBLIC_FIREBASE_DATABASE_URL=votre_database_url
 ```
 4. Lancez l'application avec `npm run dev`
-5. Connectez-vous avec le même compte que sur votre autre système
-6. Vos notes seront automatiquement synchronisées
+5. Créez un compte ou connectez-vous avec un compte existant
+6. Vos notes seront automatiquement synchronisées entre vos appareils
 
 ### Développement avec Firebase
-- Vous pouvez continuer à modifier et développer l'application normalement
-- Les modifications locales sont possibles et n'affectent pas la synchronisation
-- Les notes sont automatiquement synchronisées quand :
+- L'application nécessite une authentification pour fonctionner
+- Les notes sont stockées dans Firebase et synchronisées en temps réel
+- Les modifications sont automatiquement sauvegardées quand :
   - Vous créez une nouvelle note
   - Vous modifiez une note existante
   - Vous supprimez une note
-  - Vous vous connectez sur un autre appareil
+  - Vous changez de compte
 
 ## Installation
 
@@ -63,6 +63,8 @@ Débloquez des succès en utilisant les différentes fonctionnalités de l'appli
 
 ## Fonctionnalités
 
+- Authentification obligatoire avec Firebase
+- Synchronisation en temps réel des notes
 - Prise de notes simple et intuitive
 - Organisation par catégories
 - Mode sombre/clair
@@ -71,23 +73,21 @@ Débloquez des succès en utilisant les différentes fonctionnalités de l'appli
 - Interface responsive
 - Corbeille avec restauration
 - Confirmation de suppression personnalisable
-- Synchronisation multi-appareils avec Firebase
-- Authentification sécurisée
+- Authentification sécurisée avec changement de compte
 - Détection automatique de connexion (en ligne/hors ligne)
 - Écran de chargement avec animations et particules flottantes
 - Affichage du nom complet de l'utilisateur dans l'interface
 - Système de notifications optimisé (sans duplication)
 - Indicateur de statut de connexion animé
-- Synchronisation intelligente des notes lors du retour en ligne
 
 ## Sécurité
 
-- Authentification Firebase sécurisée
+- Authentification Firebase obligatoire
 - Synchronisation en temps réel
 - Protection des données par utilisateur
 - Validation des entrées
 - Sessions sécurisées
-- Mode hors ligne sécurisé
+- Changement de compte sécurisé
 
 ## Technologies utilisées
 
@@ -96,7 +96,6 @@ Débloquez des succès en utilisant les différentes fonctionnalités de l'appli
 - TypeScript
 - Tailwind CSS
 - Firebase (Authentification + Realtime Database)
-- LocalStorage (mode hors ligne)
 - Framer Motion (animations)
 
 ## Contribution

@@ -32,6 +32,11 @@ export const POINT_COSTS = {
   CHANGE_THEME: 5,
   ADD_BOOK: 10,
   ADD_PAGE: 5,
+  DAILY_REWARD: 50,  // Augmentation des points quotidiens
+  STREAK_BONUS: 20,  // Bonus pour connexion consécutive
+  FIRST_NOTE_OF_DAY: 15,  // Bonus pour la première note du jour
+  LONG_NOTE_BONUS: 10,  // Bonus pour une note longue
+  CATEGORY_BONUS: 5,  // Bonus pour utiliser une nouvelle catégorie
 } as const;
 
 // Hook personnalisé pour utiliser le contexte
@@ -49,6 +54,56 @@ const STORAGE_KEYS = {
   TRANSACTIONS: 'notesafe_transactions',
   LAST_DAILY_REWARD: 'notesafe_last_daily_reward'
 };
+
+// Fonctions utilitaires
+const isNewDay = (date1: Date, date2: Date): boolean => {
+  return (
+    date1.getFullYear() !== date2.getFullYear() ||
+    date1.getMonth() !== date2.getMonth() ||
+    date1.getDate() !== date2.getDate()
+  );
+};
+
+const calculateStreak = (): number => {
+  const streakData = localStorage.getItem('streak');
+  if (!streakData) return 1;
+
+  try {
+    const { count, lastLogin } = JSON.parse(streakData);
+    const lastLoginDate = new Date(lastLogin);
+    const now = new Date();
+
+    // Si c'est un nouveau jour et la dernière connexion était hier
+    if (isNewDay(lastLoginDate, now)) {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      if (lastLoginDate.getDate() === yesterday.getDate()) {
+        // Mettre à jour le streak
+        const newCount = count + 1;
+        localStorage.setItem('streak', JSON.stringify({
+          count: newCount,
+          lastLogin: now.toISOString()
+        }));
+        return newCount;
+      } else {
+        // Réinitialiser le streak si la dernière connexion n'était pas hier
+        localStorage.setItem('streak', JSON.stringify({
+          count: 1,
+          lastLogin: now.toISOString()
+        }));
+        return 1;
+      }
+    }
+    
+    return count;
+  } catch (error) {
+    console.error('Erreur lors du calcul du streak:', error);
+    return 1;
+  }
+};
+
+const MAX_TRANSACTIONS = 10; // Limite maximale de transactions à conserver
 
 export function PointsProvider({ children }: { children: React.ReactNode }) {
   const { addNotification } = useNotifications();
@@ -134,41 +189,32 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [achievementPoints]);
 
-  // Vérifier la récompense quotidienne
+  // Ajouter la récompense quotidienne
   useEffect(() => {
     const checkDailyReward = () => {
       const now = new Date();
-      const last = lastDailyReward;
+      const lastReward = getLastDailyReward();
       
-      if (!last || (now.getTime() - last.getTime()) >= 24 * 60 * 60 * 1000) {
-        // Ajouter les points sans notification (la notification sera ajoutée dans addPoints)
-        const newTransaction: PointTransaction = {
-          id: crypto.randomUUID(),
-          amount: 10,
-          type: 'earned',
-          description: 'Récompense quotidienne',
-          timestamp: now,
-          category: 'daily'
-        };
-
-        setPoints(prev => prev + 10);
-        setTransactions(prev => [newTransaction, ...prev]);
-        setLastDailyReward(now);
+      if (!lastReward || isNewDay(lastReward, now)) {
+        // Points quotidiens de base
+        addPoints(POINT_COSTS.DAILY_REWARD, 'Récompense quotidienne', 'daily');
         
-        // Ajouter la notification directement ici pour éviter le problème de duplication
-        addNotification({
-          type: 'success',
-          title: 'Points quotidiens',
-          message: 'Vous avez reçu 10 points de récompense quotidienne !',
-          action: 'daily_points'
-        });
+        // Bonus de streak si connexion consécutive
+        const streak = calculateStreak();
+        if (streak > 1) {
+          addPoints(
+            POINT_COSTS.STREAK_BONUS,
+            `Bonus de connexion consécutive (${streak} jours)`,
+            'daily'
+          );
+        }
+        
+        setLastDailyReward(now);
       }
     };
 
     checkDailyReward();
-    const interval = setInterval(checkDailyReward, 60 * 60 * 1000); // Vérifier toutes les heures
-    return () => clearInterval(interval);
-  }, []); // Retirer lastDailyReward des dépendances pour éviter la boucle
+  }, []);  // Exécuter une seule fois au chargement
 
   const addPoints = (amount: number, description: string, category: PointTransaction['category']) => {
     const newTransaction: PointTransaction = {
@@ -181,7 +227,11 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
     };
 
     setPoints(prev => prev + amount);
-    setTransactions(prev => [newTransaction, ...prev]);
+    setTransactions(prev => {
+      const newTransactions = [newTransaction, ...prev];
+      // Garder seulement les MAX_TRANSACTIONS plus récentes transactions
+      return newTransactions.slice(0, MAX_TRANSACTIONS);
+    });
 
     // Ajouter une notification pour tous les types de points SAUF daily
     // (la notification pour les points quotidiens est gérée directement dans le useEffect)
@@ -216,7 +266,11 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
     };
 
     setPoints(prev => prev - amount);
-    setTransactions(prev => [newTransaction, ...prev]);
+    setTransactions(prev => {
+      const newTransactions = [newTransaction, ...prev];
+      // Garder seulement les MAX_TRANSACTIONS plus récentes transactions
+      return newTransactions.slice(0, MAX_TRANSACTIONS);
+    });
     
     addNotification({
       type: 'info',

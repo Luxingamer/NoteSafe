@@ -104,7 +104,13 @@ const StatsCard = ({ title, value, icon, color }: { title: string; value: string
 };
 
 export default function PointsManager() {
-  const { points, transactions, getLastDailyReward } = usePoints();
+  const { points, transactions, addPoints, getLastDailyReward } = usePoints();
+
+  // Fonction pour ajouter des points de test
+  const addTestPoints = () => {
+    const amount =  20; // Montant fixe pour les tests
+    addPoints(amount, '🔧 Points de test (admin)', 'daily');
+  };
 
   // Calcul des statistiques
   const stats = useMemo(() => {
@@ -149,12 +155,22 @@ export default function PointsManager() {
           <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2">Gestion des Points</h1>
           <p className="text-gray-600 dark:text-gray-400">Suivez vos points et vos récompenses</p>
         </div>
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200">
-          <div className="flex items-center gap-4">
-            <span className="text-4xl">💎</span>
-            <div className="flex flex-col">
-              <span className="text-sm text-white/90 font-medium">Total des points</span>
-              <span className="text-3xl font-bold text-white">{points}</span>
+        <div className="flex gap-4">
+          {/* Bouton d'administration pour ajouter des points de test */}
+          <button
+            onClick={addTestPoints}
+            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            + 20 points (Test)
+          </button>
+          
+          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200">
+            <div className="flex items-center gap-4">
+              <span className="text-4xl">💎</span>
+              <div className="flex flex-col">
+                <span className="text-sm text-white/90 font-medium">Total des points</span>
+                <span className="text-3xl font-bold text-white">{points}</span>
+              </div>
             </div>
           </div>
         </div>
