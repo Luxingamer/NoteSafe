@@ -11,7 +11,7 @@ export interface PointTransaction {
   type: 'earned' | 'spent';
   description: string;
   timestamp: Date;
-  category: 'daily' | 'achievement' | 'edit' | 'ai' | 'theme' | 'book' | 'page';
+  category: 'daily' | 'achievement' | 'edit' | 'memory' | 'theme' | 'book' | 'page';
 }
 
 interface PointsContextType {
@@ -37,6 +37,12 @@ export const POINT_COSTS = {
   FIRST_NOTE_OF_DAY: 15,  // Bonus pour la première note du jour
   LONG_NOTE_BONUS: 10,  // Bonus pour une note longue
   CATEGORY_BONUS: 5,  // Bonus pour utiliser une nouvelle catégorie
+  // Nouvelles actions pour la mémoire
+  MEMORY_ITEM_ADDED: 15,
+  MEMORY_ITEM_ENCRYPTED: 20,
+  MEMORY_CATEGORY_BONUS: 10,
+  MEMORY_STREAK_BONUS: 25,
+  MEMORY_ORGANIZATION_BONUS: 30
 } as const;
 
 // Hook personnalisé pour utiliser le contexte
@@ -113,7 +119,6 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
   const [points, setPoints] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedPoints = localStorage.getItem(STORAGE_KEYS.POINTS);
-      // Si pas de points sauvegardés, on commence avec les points des succès
       return savedPoints ? parseInt(savedPoints, 10) : achievementPoints;
     }
     return achievementPoints;
@@ -161,60 +166,61 @@ export function PointsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [lastDailyReward]);
 
-  // Mettre à jour les points quand les succès changent
-  useEffect(() => {
-    const savedPoints = localStorage.getItem(STORAGE_KEYS.POINTS);
-    const currentPoints = savedPoints ? parseInt(savedPoints, 10) : 0;
-    const savedTransactions = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-    const transactions = savedTransactions ? JSON.parse(savedTransactions) : [];
-    
-    // Vérifier si nous avons déjà enregistré une transaction pour ces points de succès
-    const hasAchievementTransaction = transactions.some(
-      (t: PointTransaction) => t.category === 'achievement' && t.amount === achievementPoints
-    );
-
-    // Si pas de transaction pour ces points de succès, les ajouter
-    if (!hasAchievementTransaction && achievementPoints > 0) {
-      const newTransaction: PointTransaction = {
-        id: crypto.randomUUID(),
-        amount: achievementPoints,
-        type: 'earned',
-        description: 'Points des succès',
-        timestamp: new Date(),
-        category: 'achievement'
-      };
-
-      setTransactions(prev => [newTransaction, ...prev]);
-      setPoints(currentPoints + achievementPoints);
-    }
-  }, [achievementPoints]);
-
   // Ajouter la récompense quotidienne
   useEffect(() => {
     const checkDailyReward = () => {
       const now = new Date();
       const lastReward = getLastDailyReward();
       
-      if (!lastReward || isNewDay(lastReward, now)) {
-        // Points quotidiens de base
-        addPoints(POINT_COSTS.DAILY_REWARD, 'Récompense quotidienne', 'daily');
-        
-        // Bonus de streak si connexion consécutive
-        const streak = calculateStreak();
-        if (streak > 1) {
-          addPoints(
-            POINT_COSTS.STREAK_BONUS,
-            `Bonus de connexion consécutive (${streak} jours)`,
-            'daily'
-          );
+      // Vérifier si on a déjà donné la récompense aujourd'hui
+      if (lastReward) {
+        const lastRewardDate = new Date(lastReward);
+        const today = new Date();
+        if (
+          lastRewardDate.getFullYear() === today.getFullYear() &&
+          lastRewardDate.getMonth() === today.getMonth() &&
+          lastRewardDate.getDate() === today.getDate()
+        ) {
+          return; // On a déjà donné la récompense aujourd'hui
         }
-        
-        setLastDailyReward(now);
       }
+
+      // Points quotidiens de base
+      addPoints(POINT_COSTS.DAILY_REWARD, 'Récompense quotidienne', 'daily');
+      
+      // Bonus de streak si connexion consécutive
+      const streak = calculateStreak();
+      if (streak > 1) {
+        addPoints(
+          POINT_COSTS.STREAK_BONUS,
+          `Bonus de connexion consécutive (${streak} jours)`,
+          'daily'
+        );
+      }
+      
+      setLastDailyReward(now);
+
+      // Ajouter une notification pour les points quotidiens
+      addNotification({
+        type: 'success',
+        title: 'Points quotidiens',
+        message: `Vous avez reçu ${POINT_COSTS.DAILY_REWARD} points quotidiens${streak > 1 ? ` et ${POINT_COSTS.STREAK_BONUS} points de bonus pour ${streak} jours consécutifs` : ''}!`,
+        action: 'daily_reward'
+      });
     };
 
+    // Vérifier les points quotidiens au chargement
     checkDailyReward();
-  }, []);  // Exécuter une seule fois au chargement
+
+    // Vérifier à minuit chaque jour
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const timeUntilMidnight = tomorrow.getTime() - now.getTime();
+
+    const midnightTimeout = setTimeout(checkDailyReward, timeUntilMidnight);
+
+    return () => clearTimeout(midnightTimeout);
+  }, []);
 
   const addPoints = (amount: number, description: string, category: PointTransaction['category']) => {
     const newTransaction: PointTransaction = {

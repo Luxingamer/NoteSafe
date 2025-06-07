@@ -19,7 +19,7 @@ export default function SideIconBar({}: SideIconBarProps) {
   const unreadCount = notifications.filter(notification => !notification.read).length;
 
   // Fonction pour déclencher les filtres de vue
-  const triggerViewFilter = (view: 'achievements' | 'book' | 'ai' | 'notifications' | 'documentation' | 'points') => {
+  const triggerViewFilter = (view: 'achievements' | 'book' | 'memory' | 'notifications' | 'documentation' | 'points') => {
     // Créer et déclencher un événement personnalisé avec la vue sélectionnée
     const event = new CustomEvent('filter-view', { 
       detail: { view } 
@@ -49,14 +49,14 @@ export default function SideIconBar({}: SideIconBarProps) {
           </svg>
         </button>
 
-        {/* Icône Intelligence Artificielle */}
+        {/* Icône Mémoire */}
         <button
-          onClick={() => triggerViewFilter('ai')}
-          className={`p-2 rounded-full hover:bg-white/20 text-cyan-300 transition-all duration-200 ${isHovered ? 'scale-110' : ''}`}
-          title="Intelligence Artificielle"
+          onClick={() => triggerViewFilter('memory')}
+          className={`p-2 rounded-full hover:bg-white/20 text-rose-300 transition-all duration-200 ${isHovered ? 'scale-110' : ''}`}
+          title="Mémoire"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-            <path d="M21,15.61L19.59,17L14.58,12L19.59,7L21,8.39L17.44,12L21,15.61M3,6H16V8H3V6M3,13V11H13V13H3M3,18V16H16V18H3Z" />
+            <path d="M6,3A3,3 0 0,1 9,6C9,7.31 8.17,8.42 7,8.83V15.17C8.17,15.58 9,16.69 9,18A3,3 0 0,1 6,21A3,3 0 0,1 3,18C3,16.69 3.83,15.58 5,15.17V8.83C3.83,8.42 3,7.31 3,6A3,3 0 0,1 6,3M6,5A1,1 0 0,0 5,6A1,1 0 0,0 6,7A1,1 0 0,0 7,6A1,1 0 0,0 6,5M6,17A1,1 0 0,0 5,18A1,1 0 0,0 6,19A1,1 0 0,0 7,18A1,1 0 0,0 6,17M18,3A3,3 0 0,1 21,6C21,7.31 20.17,8.42 19,8.83V15.17C20.17,15.58 21,16.69 21,18A3,3 0 0,1 18,21A3,3 0 0,1 15,18C15,16.69 15.83,15.58 17,15.17V8.83C15.83,8.42 15,7.31 15,6A3,3 0 0,1 18,3M18,5A1,1 0 0,0 17,6A1,1 0 0,0 18,7A1,1 0 0,0 19,6A1,1 0 0,0 18,5M18,17A1,1 0 0,0 17,18A1,1 0 0,0 18,19A1,1 0 0,0 19,18A1,1 0 0,0 18,17M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10Z" />
           </svg>
         </button>
 

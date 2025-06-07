@@ -14,13 +14,13 @@ export interface Achievement {
   condition: (data: AchievementData) => boolean;
   unlockedAt?: Date;
   rarity: 'commun' | 'rare' | 'épique' | 'légendaire';
-  category: 'écriture' | 'exploration' | 'collection' | 'maîtrise' | 'social' | 'innovation' | 'lecture' | 'ia' | 'personnalisation';
+  category: 'écriture' | 'exploration' | 'collection' | 'maîtrise' | 'social' | 'innovation' | 'lecture' | 'personnalisation' | 'mémoire';
   points: number;
   requiresAuth: boolean;
 }
 
-// Type pour les données utilisées pour vérifier les succès
-interface AchievementData {
+// Types pour les données des succès
+export interface AchievementData {
   totalNotes: number;
   notesByCategory: Record<string, number>;
   consecutiveDays: number;
@@ -30,30 +30,25 @@ interface AchievementData {
   archived: number;
   streakDays: number;
   userDays: number;
-  isAuthenticated: boolean;
-  totalBooks: number;
-  totalBookPages: number;
-  aiInteractions: number;
-  customThemes: number;
-  socialInteractions: number;
-  loginStreak: number;
-  totalLogins: number;
-  settingsChanged: number;
-  categoriesCustomized: number;
-  notesShared: number;
-  collaborativeNotes: number;
-  aiSuggestionsAccepted: number;
-  languagesUsed: string[];
-  lastLoginTime?: Date;
-  dailyPagesRead: number;
-  aiNotesImproved: number;
-  totalCustomizations: number;
   newFeaturesTried: number;
   customWorkflows: number;
   featureContributions: number;
+  totalBookPages: number;
+  totalBooks: number;
+  dailyPagesRead: number;
+  customThemes: number;
+  categoriesCustomized: number;
+  totalCustomizations: number;
+  isAuthenticated: boolean;
   collaborativeProjects: number;
   usersHelped: number;
   thanksReceived: number;
+  // Nouvelles propriétés pour la mémoire
+  memoryItems: number;
+  encryptedItems: number;
+  memoryCategories: number;
+  uniqueTags: number;
+  memoryStreak: number;
 }
 
 // Type pour le contexte des succès
@@ -270,52 +265,6 @@ const achievementsList: Achievement[] = [
     requiresAuth: true
   },
 
-  // Succès d'IA
-  {
-    id: 'ai-beginner',
-    title: 'Apprenti IA',
-    description: 'Utilisez l\'IA pour la première fois',
-    icon: '🤖',
-    condition: (data) => data.aiInteractions >= 1,
-    rarity: 'commun',
-    category: 'ia',
-    points: 20,
-    requiresAuth: true
-  },
-  {
-    id: 'ai-master',
-    title: 'Maître de l\'IA',
-    description: 'Utilisez l\'IA pour améliorer 1000 notes',
-    icon: '🧠',
-    condition: (data) => data.aiNotesImproved >= 1000,
-    rarity: 'légendaire',
-    category: 'ia',
-    points: 600,
-    requiresAuth: true
-  },
-  {
-    id: 'ai-friend',
-    title: 'Ami de l\'IA',
-    description: 'Utilisez l\'IA pour améliorer 10 notes',
-    icon: '🤖',
-    condition: (data) => data.aiNotesImproved >= 10,
-    rarity: 'rare',
-    category: 'ia',
-    points: 60,
-    requiresAuth: true
-  },
-  {
-    id: 'ai-symbiosis',
-    title: 'Symbiose avec l\'IA',
-    description: 'Acceptez 100 suggestions de l\'IA',
-    icon: '🧠',
-    condition: (data) => data.aiSuggestionsAccepted >= 100,
-    rarity: 'légendaire',
-    category: 'ia',
-    points: 250,
-    requiresAuth: true
-  },
-
   // Succès de personnalisation
   {
     id: 'theme-creator',
@@ -359,6 +308,85 @@ const achievementsList: Achievement[] = [
     rarity: 'légendaire',
     category: 'personnalisation',
     points: 200,
+    requiresAuth: true
+  },
+
+  // Succès de mémoire
+  {
+    id: 'memory-beginner',
+    title: 'Gardien de Secrets',
+    description: 'Ajoutez votre premier élément en mémoire',
+    icon: '🔐',
+    condition: (data) => data.memoryItems >= 1,
+    rarity: 'commun',
+    category: 'mémoire',
+    points: 20,
+    requiresAuth: true
+  },
+  {
+    id: 'memory-collector',
+    title: 'Collectionneur de Secrets',
+    description: 'Stockez 50 éléments en mémoire',
+    icon: '🗝️',
+    condition: (data) => data.memoryItems >= 50,
+    rarity: 'rare',
+    category: 'mémoire',
+    points: 100,
+    requiresAuth: true
+  },
+  {
+    id: 'memory-master',
+    title: 'Maître de la Mémoire',
+    description: 'Stockez 200 éléments en mémoire',
+    icon: '🏆',
+    condition: (data) => data.memoryItems >= 200,
+    rarity: 'légendaire',
+    category: 'mémoire',
+    points: 300,
+    requiresAuth: true
+  },
+  {
+    id: 'encryption-expert',
+    title: 'Expert en Chiffrement',
+    description: 'Chiffrez 100 éléments en mémoire',
+    icon: '🔒',
+    condition: (data) => data.encryptedItems >= 100,
+    rarity: 'épique',
+    category: 'mémoire',
+    points: 200,
+    requiresAuth: true
+  },
+  {
+    id: 'memory-organizer',
+    title: 'Organisateur',
+    description: 'Utilisez tous les types de mémoire disponibles',
+    icon: '📋',
+    condition: (data) => data.memoryCategories >= 7,
+    rarity: 'rare',
+    category: 'mémoire',
+    points: 150,
+    requiresAuth: true
+  },
+  {
+    id: 'tag-master',
+    title: 'Maître des Tags',
+    description: 'Utilisez 50 tags différents pour organiser vos éléments',
+    icon: '🏷️',
+    condition: (data) => data.uniqueTags >= 50,
+    rarity: 'épique',
+    category: 'mémoire',
+    points: 180,
+    requiresAuth: true
+  },
+  {
+    id: 'memory-streak',
+    title: 'Mémoire Fidèle',
+    description: 'Ajoutez des éléments en mémoire pendant 30 jours consécutifs',
+    icon: '📅',
+    condition: (data) => data.memoryStreak >= 30,
+    rarity: 'légendaire',
+    category: 'mémoire',
+    points: 250,
     requiresAuth: true
   }
 ];
@@ -411,82 +439,34 @@ export const AchievementsProvider: React.FC<{ children: React.ReactNode }> = ({ 
   
   // Calculer les données pour vérifier les succès
   const calculateAchievementData = (): AchievementData => {
-    // Compter les notes par catégorie
-    const notesByCategory: Record<string, number> = {};
-    notes.forEach(note => {
-      if (note?.category) {
-        notesByCategory[note.category] = (notesByCategory[note.category] || 0) + 1;
-      }
-    });
-    
-    // Calculer le nombre total de mots et de caractères
-    const totalWords = notes.reduce((acc, note) => {
-      if (!note?.content || typeof note.content !== 'string') return acc;
-      return acc + note.content.split(/\s+/).filter(Boolean).length;
-    }, 0);
-    
-    const totalCharacters = notes.reduce((acc, note) => {
-      if (!note?.content || typeof note.content !== 'string') return acc;
-      return acc + note.content.length;
-    }, 0);
-    
-    // Calculer le nombre de jours consécutifs d'écriture
-    const consecutiveDays = 0; // À implémenter en analysant les dates des notes
-    
-    // Compter les notes favorites et archivées
-    const favorites = notes.filter(note => note?.favorite).length;
-    const archived = notes.filter(note => note?.archived).length;
-    
-    // Calculer le nombre de jours d'utilisation 
-    const userDays = userInfo?.joined 
-      ? Math.floor((new Date().getTime() - userInfo.joined.getTime()) / (1000 * 60 * 60 * 24))
-      : 0;
-    
-    // Données pour les nouveaux succès
-    const dailyPagesRead = 0; // À implémenter avec le système de lecture
-    const aiNotesImproved = 0; // À implémenter avec le système d'IA
-    const totalCustomizations = 0; // À implémenter avec le système de personnalisation
-    const newFeaturesTried = 0; // À implémenter avec le système de fonctionnalités
-    const customWorkflows = 0; // À implémenter avec le système de workflows
-    const featureContributions = 0; // À implémenter avec le système de contributions
-    const collaborativeProjects = 0; // À implémenter avec le système de collaboration
-    const usersHelped = 0; // À implémenter avec le système d'aide
-    const thanksReceived = 0; // À implémenter avec le système de remerciements
-    
     return {
-      totalNotes: notes.length,
-      notesByCategory,
-      consecutiveDays,
-      totalWords,
-      totalCharacters,
-      favorites,
-      archived,
-      streakDays: consecutiveDays,
-      userDays,
-      isAuthenticated: !!userInfo?.email,
-      totalBooks: 0,
+      totalNotes: 0,
+      notesByCategory: {},
+      consecutiveDays: 0,
+      totalWords: 0,
+      totalCharacters: 0,
+      favorites: 0,
+      archived: 0,
+      streakDays: 0,
+      userDays: 0,
+      newFeaturesTried: 0,
+      customWorkflows: 0,
+      featureContributions: 0,
       totalBookPages: 0,
-      aiInteractions: 0,
+      totalBooks: 0,
+      dailyPagesRead: 0,
       customThemes: 0,
-      socialInteractions: 0,
-      loginStreak: 0,
-      totalLogins: 0,
-      settingsChanged: 0,
       categoriesCustomized: 0,
-      notesShared: 0,
-      collaborativeNotes: 0,
-      aiSuggestionsAccepted: 0,
-      languagesUsed: [],
-      lastLoginTime: userInfo?.lastLogin ? new Date(userInfo.lastLogin) : undefined,
-      dailyPagesRead,
-      aiNotesImproved,
-      totalCustomizations,
-      newFeaturesTried,
-      customWorkflows,
-      featureContributions,
-      collaborativeProjects,
-      usersHelped,
-      thanksReceived
+      totalCustomizations: 0,
+      isAuthenticated: false,
+      collaborativeProjects: 0,
+      usersHelped: 0,
+      thanksReceived: 0,
+      memoryItems: 0,
+      encryptedItems: 0,
+      memoryCategories: 0,
+      uniqueTags: 0,
+      memoryStreak: 0
     };
   };
   

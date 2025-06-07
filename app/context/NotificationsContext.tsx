@@ -34,6 +34,17 @@ export type NotificationAction =
   | 'settings_backup_changed'
   | 'settings_sync_changed'
   
+  // Actions liées à la mémoire
+  | 'memory_item_added'
+  | 'memory_item_deleted'
+  | 'memory_item_updated'
+  | 'memory_item_encrypted'
+  | 'memory_item_decrypted'
+  | 'memory_item_favorite_added'
+  | 'memory_item_favorite_removed'
+  | 'memory_item_tag_added'
+  | 'memory_item_tag_removed'
+  
   // Actions liées à l'IA
   | 'ai_text_generated'
   | 'ai_summary_generated'
@@ -135,6 +146,19 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     }
   }, [notifications, isInitialized]);
 
+  // Nettoyer les toasts expirés
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      setToasts(prev => prev.filter(toast => {
+        const age = now.getTime() - toast.timestamp.getTime();
+        return age < 5000; // Supprimer les toasts après 5 secondes
+      }));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const addNotification = useCallback((notification: Omit<NotificationItem, 'id' | 'timestamp' | 'read'>) => {
     const newNotification: NotificationItem = {
       ...notification,
@@ -143,9 +167,25 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       read: false,
     };
 
-    setNotifications(prev => [newNotification, ...prev]);
-    setToasts(prev => [...prev, newNotification]);
-  }, []);
+    // Vérifier si une notification similaire existe déjà dans les dernières 5 secondes
+    const now = new Date();
+    const recentNotifications = notifications.filter(n => {
+      const age = now.getTime() - n.timestamp.getTime();
+      return age < 5000;
+    });
+
+    const isDuplicate = recentNotifications.some(n => 
+      n.type === notification.type && 
+      n.action === notification.action && 
+      n.title === notification.title && 
+      n.message === notification.message
+    );
+
+    if (!isDuplicate) {
+      setNotifications(prev => [newNotification, ...prev]);
+      setToasts(prev => [...prev, newNotification]);
+    }
+  }, [notifications]);
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));

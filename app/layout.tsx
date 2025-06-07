@@ -8,6 +8,8 @@ import { SettingsProvider } from './context/SettingsContext'
 import { NotificationsProvider } from './context/NotificationsContext'
 import { AuthProvider } from './context/AuthContext'
 import { UserProvider } from './context/UserContext'
+import { MemoryProvider } from './context/MemoryContext'
+import { PointsProvider } from './context/PointsContext'
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -28,11 +30,15 @@ export default function RootLayout({
           <AuthProvider>
             <SettingsProvider>
               <NotificationsProvider>
-                <NotesProvider>
-                  <UserProvider>
-                    {children}
-                  </UserProvider>
-                </NotesProvider>
+                <PointsProvider>
+                  <NotesProvider>
+                    <MemoryProvider>
+                      <UserProvider>
+                        {children}
+                      </UserProvider>
+                    </MemoryProvider>
+                  </NotesProvider>
+                </PointsProvider>
               </NotificationsProvider>
             </SettingsProvider>
           </AuthProvider>

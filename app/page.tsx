@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNotes } from './context/NotesContext';
 import { NoteCategory } from './context/NotesContext';
 import NoteInput from './components/NoteInput';
@@ -15,12 +15,13 @@ import Achievements from './components/Achievements';
 import SideIconBar from './components/SideIconBar';
 import Notifications from './components/Notifications';
 import Documentation from './components/Documentation';
-import AI from './components/AI';
+import Memory from './components/Memory';
 import Book from './components/Book';
 import PointsManager from './components/PointsManager';
+import AccountModal from './components/AccountModal';
 
 // Types de vues disponibles
-type ViewMode = 'all' | 'favorites' | 'archived' | 'recent' | 'settings' | 'calendar' | 'statistics' | 'profile' | 'achievements' | 'book' | 'ai' | 'notifications' | 'documentation' | 'trash' | 'points';
+type ViewMode = 'all' | 'favorites' | 'archived' | 'recent' | 'settings' | 'calendar' | 'statistics' | 'profile' | 'achievements' | 'book' | 'memory' | 'notifications' | 'documentation' | 'trash' | 'points';
 
 export default function Home() {
   // États pour les filtres et les vues
@@ -30,6 +31,7 @@ export default function Home() {
   const [isViewChanging, setIsViewChanging] = useState(false);
   const { notes, searchResults, searchNotes } = useNotes();
   const inputRef = useRef<HTMLTextAreaElement>(null) as React.RefObject<HTMLTextAreaElement>;
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
   // Gérer la sélection de catégorie
   const handleSelectCategory = (category: NoteCategory | 'toutes') => {
@@ -53,7 +55,7 @@ export default function Home() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 3000);
+    }, 1000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -282,8 +284,8 @@ export default function Home() {
       return 'Mode Livre';
     }
     
-    if (activeView === 'ai') {
-      return 'Intelligence Artificielle';
+    if (activeView === 'memory') {
+      return 'Mémoire';
     }
     
     if (activeView === 'notifications') {
@@ -341,8 +343,8 @@ export default function Home() {
       return 'Lisez vos notes dans un format de livre électronique';
     }
     
-    if (activeView === 'ai') {
-      return 'Utilisez l\'IA pour générer et améliorer vos notes';
+    if (activeView === 'memory') {
+      return 'Utilisez la mémoire pour générer et améliorer vos notes';
     }
     
     if (activeView === 'notifications') {
@@ -486,10 +488,10 @@ export default function Home() {
                   <Book />
                 </div>
               </div>
-            ) : activeView === 'ai' ? (
+            ) : activeView === 'memory' ? (
               <div className="view-transition-right w-full flex justify-center">
                 <div className="w-full max-w-4xl">
-                  <AI />
+                  <Memory />
                 </div>
               </div>
             ) : activeView === 'notifications' ? (
@@ -524,6 +526,11 @@ export default function Home() {
         </main>
         </div>
       </div>
+      
+      <AccountModal
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
+      />
       
       {/* Styles pour l'animation des notifications */}
       <style jsx global>{`

@@ -1,14 +1,25 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from 'firebase/auth';
+import { User, Auth } from 'firebase/auth';
 import { auth } from '../../firebase/config';
 import { onAuthStateChanged } from 'firebase/auth';
-import { logout as logoutService, updateUserProfile as updateProfileService } from '../../firebase/authService';
+import { 
+  loginWithEmail,
+  loginWithGoogle,
+  registerWithEmail,
+  resetPassword as resetPasswordService,
+  logout as logoutService, 
+  updateUserProfile as updateProfileService 
+} from '../../firebase/authService';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserProfile: (displayName: string) => Promise<void>;
 }
@@ -16,6 +27,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  login: async () => {},
+  register: async () => {},
+  loginWithGoogle: async () => {},
+  resetPassword: async () => {},
   logout: async () => {},
   updateUserProfile: async () => {}
 });
@@ -33,30 +48,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const authTimeout = setTimeout(() => {
       setLoading(false);
-    });
+    }, 2000); // Timeout après 2 secondes
 
-    return () => unsubscribe();
+    let unsubscribe = () => {};
+    
+    if (auth) {
+      unsubscribe = onAuthStateChanged(auth, (user) => {
+        setUser(user);
+        setLoading(false);
+        clearTimeout(authTimeout);
+      });
+    } else {
+      setLoading(false);
+    }
+
+    return () => {
+      unsubscribe();
+      clearTimeout(authTimeout);
+    };
   }, []);
 
+  const login = async (email: string, password: string) => {
+    await loginWithEmail(email, password);
+  };
+
+  const register = async (email: string, password: string, name: string) => {
+    await registerWithEmail(email, password, name);
+  };
+
+  const googleLogin = async () => {
+    await loginWithGoogle();
+  };
+
+  const resetPass = async (email: string) => {
+    await resetPasswordService(email);
+  };
+
   const logout = async () => {
-    return logoutService();
+    await logoutService();
   };
 
   const updateUserProfile = async (displayName: string) => {
     await updateProfileService(displayName);
-    // Mettre à jour l'état local pour refléter le changement
     if (user) {
-      // Créer une copie modifiée de l'utilisateur
       const updatedUser = { ...user, displayName };
       setUser(updatedUser as User);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout, updateUserProfile }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      login,
+      register,
+      loginWithGoogle: googleLogin,
+      resetPassword: resetPass,
+      logout,
+      updateUserProfile 
+    }}>
       {!loading && children}
     </AuthContext.Provider>
   );

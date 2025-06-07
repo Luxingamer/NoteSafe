@@ -2,42 +2,44 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAchievements, Achievement } from '../context/AchievementsContext';
+import { categoryColors, rarityColors, CategoryColor, RarityColor, CategoryColors, RarityColors } from '../utils/colors';
 
-// Couleurs pour les raretés des succès
-const rarityColors = {
+// Couleurs pour les raretés des succès avec glow
+interface RarityColorWithGlow extends RarityColor {
+  glow: string;
+}
+
+type RarityColorsWithGlow = {
+  [key: string]: RarityColorWithGlow;
+};
+
+const rarityColorsWithGlow: RarityColorsWithGlow = {
   'commun': {
-    bg: 'bg-blue-100 dark:bg-blue-900/20',
-    text: 'text-blue-800 dark:text-blue-300',
-    border: 'border-blue-300 dark:border-blue-700',
-    progress: 'bg-blue-500',
+    ...rarityColors['commun'],
     glow: 'shadow-blue-200 dark:shadow-blue-900/40'
   },
   'rare': {
-    bg: 'bg-purple-100 dark:bg-purple-900/20',
-    text: 'text-purple-800 dark:text-purple-300',
-    border: 'border-purple-300 dark:border-purple-700',
-    progress: 'bg-purple-500',
+    ...rarityColors['rare'],
     glow: 'shadow-purple-200 dark:shadow-purple-900/40'
   },
-  'épique': {
-    bg: 'bg-pink-100 dark:bg-pink-900/20',
-    text: 'text-pink-800 dark:text-pink-300',
-    border: 'border-pink-300 dark:border-pink-700',
-    progress: 'bg-pink-500',
+  'epique': {
+    ...rarityColors['epique'],
     glow: 'shadow-pink-200 dark:shadow-pink-900/40'
   },
-  'légendaire': {
-    bg: 'bg-amber-100 dark:bg-amber-900/20',
-    text: 'text-amber-800 dark:text-amber-300',
-    border: 'border-amber-300 dark:border-amber-700',
-    progress: 'bg-amber-500',
+  'legendaire': {
+    ...rarityColors['legendaire'],
     glow: 'shadow-amber-200 dark:shadow-amber-900/40'
   }
 };
 
 // Couleurs pour les catégories de succès
-const categoryColors = {
+const categoryColorsLocal = {
   'écriture': {
+    bg: 'bg-green-100 dark:bg-green-900/20',
+    text: 'text-green-800 dark:text-green-300',
+    icon: '✍️'
+  },
+  'ecriture': {
     bg: 'bg-green-100 dark:bg-green-900/20',
     text: 'text-green-800 dark:text-green-300',
     icon: '✍️'
@@ -53,6 +55,11 @@ const categoryColors = {
     icon: '🗃️'
   },
   'maîtrise': {
+    bg: 'bg-red-100 dark:bg-red-900/20',
+    text: 'text-red-800 dark:text-red-300',
+    icon: '🏆'
+  },
+  'maitrise': {
     bg: 'bg-red-100 dark:bg-red-900/20',
     text: 'text-red-800 dark:text-red-300',
     icon: '🏆'
@@ -81,6 +88,11 @@ const categoryColors = {
     bg: 'bg-rose-100 dark:bg-rose-900/20',
     text: 'text-rose-800 dark:text-rose-300',
     icon: '🎨'
+  },
+  'memoire': {
+    bg: 'bg-violet-100 dark:bg-violet-900/20',
+    text: 'text-violet-800 dark:text-violet-300',
+    icon: '🔐'
   }
 };
 
@@ -91,8 +103,16 @@ const AchievementCard: React.FC<{ achievement: Achievement }> = ({ achievement }
   const isUnlocked = achievement.unlockedAt !== undefined;
   const milestone = getNextMilestone(achievement.id);
   
-  const rarityColor = rarityColors[achievement.rarity];
-  const categoryColor = categoryColors[achievement.category];
+  // Normaliser la catégorie et la rareté
+  const normalizedCategory = achievement.category.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const normalizedRarity = achievement.rarity.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
+  const rarityColor = rarityColorsWithGlow[normalizedRarity] || rarityColorsWithGlow['commun'];
+  const categoryColor = categoryColors[normalizedCategory] || {
+    bg: 'bg-gray-100/20',
+    text: 'text-gray-600 dark:text-gray-400',
+    icon: '📋'
+  };
   
   return (
     <div className={`rounded-xl p-6 transition-all duration-300 ${
@@ -181,38 +201,43 @@ const AchievementCard: React.FC<{ achievement: Achievement }> = ({ achievement }
   );
 };
 
+// Type pour les statistiques
+interface CategoryStats {
+  total: number;
+  unlocked: number;
+}
+
+// Type pour les statistiques par catégorie
+type StatsByCategory = Record<string, CategoryStats>;
+
 // Widget de statistiques de succès
 const AchievementStats: React.FC = () => {
   const { achievements, unlockedAchievements, totalPoints } = useAchievements();
   
   // Calculer les statistiques par catégorie
-  const statsByCategory: Record<string, { total: number, unlocked: number }> = {
-    'écriture': { total: 0, unlocked: 0 },
+  const statsByCategory: StatsByCategory = {
+    'ecriture': { total: 0, unlocked: 0 },
     'exploration': { total: 0, unlocked: 0 },
     'collection': { total: 0, unlocked: 0 },
-    'maîtrise': { total: 0, unlocked: 0 },
+    'maitrise': { total: 0, unlocked: 0 },
     'social': { total: 0, unlocked: 0 },
     'innovation': { total: 0, unlocked: 0 },
     'lecture': { total: 0, unlocked: 0 },
     'ia': { total: 0, unlocked: 0 },
-    'personnalisation': { total: 0, unlocked: 0 }
+    'personnalisation': { total: 0, unlocked: 0 },
+    'memoire': { total: 0, unlocked: 0 }
   };
   
-  // Calculer les statistiques par rareté
-  const statsByRarity: Record<string, { total: number, unlocked: number }> = {
-    'commun': { total: 0, unlocked: 0 },
-    'rare': { total: 0, unlocked: 0 },
-    'épique': { total: 0, unlocked: 0 },
-    'légendaire': { total: 0, unlocked: 0 }
-  };
-  
+  // Calculer les statistiques
   achievements.forEach(achievement => {
-    statsByCategory[achievement.category].total += 1;
-    statsByRarity[achievement.rarity].total += 1;
+    const normalizedCategory = achievement.category.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     
-    if (achievement.unlockedAt) {
-      statsByCategory[achievement.category].unlocked += 1;
-      statsByRarity[achievement.rarity].unlocked += 1;
+    // Mettre à jour les stats de catégorie
+    if (statsByCategory[normalizedCategory]) {
+      statsByCategory[normalizedCategory].total += 1;
+      if (achievement.unlockedAt) {
+        statsByCategory[normalizedCategory].unlocked += 1;
+      }
     }
   });
   
@@ -249,73 +274,54 @@ const AchievementStats: React.FC = () => {
             </span>
           </div>
         </div>
+      </div>
+      
+      {/* Progression par catégorie */}
+      <div>
+        <h4 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">
+          Progression par catégorie
+        </h4>
         
-        {/* Points par rareté */}
-        <div className="grid grid-cols-2 gap-2">
-          {Object.entries(statsByRarity).map(([rarity, stats]) => {
-            const rarityColor = rarityColors[rarity as keyof typeof rarityColors];
-            const percent = Math.round((stats.unlocked / stats.total) * 100) || 0;
+        <div className="space-y-4">
+          {Object.entries(statsByCategory).map(([category, stats]) => {
+            const percent = Math.round((stats.unlocked / (stats.total || 1)) * 100) || 0;
+            // Normalisation robuste
+            const normalizedCategory = category.toLowerCase().normalize('NFD').replace(/\u0300-\u036f/g, '');
+            const catColor = categoryColorsLocal[category as keyof typeof categoryColorsLocal] || categoryColorsLocal[normalizedCategory as keyof typeof categoryColorsLocal];
+            if (!catColor) {
+              console.warn('Catégorie inconnue ou non mappée dans categoryColorsLocal:', { category, normalizedCategory });
+            }
+            const safeCatColor = catColor || { bg: 'bg-gray-200', text: 'text-gray-500', icon: '❓' };
             
             return (
-              <div key={rarity} className={`rounded-lg p-3 ${rarityColor.bg} border ${rarityColor.border}`}>
-                <div className="flex justify-between items-center mb-1">
-                  <span className={`font-medium ${rarityColor.text}`}>
-                    {rarity.charAt(0).toUpperCase() + rarity.slice(1)}
-                  </span>
-                  <span className={`text-sm ${rarityColor.text}`}>
-                    {stats.unlocked}/{stats.total}
+              <div key={category} className="flex items-center gap-4">
+                <div className="w-1/4 flex items-center">
+                  <span className={`text-lg mr-2`}>{safeCatColor.icon}</span>
+                  <span className={`${safeCatColor.text} font-medium`}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
                   </span>
                 </div>
-                <div className="w-full h-2 bg-white/50 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full ${rarityColor.progress}`} 
-                    style={{ width: `${percent}%` }}
-                  ></div>
+                
+                <div className="w-3/4">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-gray-600 dark:text-gray-400">
+                      {stats.unlocked}/{stats.total} succès
+                    </span>
+                    <span className="font-medium">
+                      {percent}%
+                    </span>
+                  </div>
+                  <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full ${safeCatColor.bg.replace('bg-', 'bg-').replace('/20', '')}`} 
+                      style={{ width: `${percent}%` }}
+                    ></div>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
-      </div>
-      
-      {/* Progression par catégorie */}
-      <div className="space-y-3 mb-2">
-        <h4 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">
-          Progression par catégorie
-        </h4>
-        
-        {Object.entries(statsByCategory).map(([category, stats]) => {
-          const percent = Math.round((stats.unlocked / stats.total) * 100) || 0;
-          const catColor = categoryColors[category as keyof typeof categoryColors];
-          
-          return (
-            <div key={category} className="flex items-center gap-4">
-              <div className="w-1/4 flex items-center">
-                <span className={`text-lg mr-2`}>{catColor.icon}</span>
-                <span className={`${catColor.text} font-medium`}>
-                  {category.charAt(0).toUpperCase() + category.slice(1)}
-                </span>
-              </div>
-              
-              <div className="w-3/4">
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-gray-600 dark:text-gray-400">
-                    {stats.unlocked}/{stats.total} succès
-                  </span>
-                  <span className="font-medium">
-                    {percent}%
-                  </span>
-                </div>
-                <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full ${catColor.bg.replace('bg-', 'bg-').replace('/20', '')}`} 
-                    style={{ width: `${percent}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
@@ -377,11 +383,11 @@ export default function Achievements() {
                 activeTab === category
                   ? category === 'all'
                     ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300'
-                    : `${categoryColors[category as keyof typeof categoryColors]?.bg} ${categoryColors[category as keyof typeof categoryColors]?.text}`
+                    : `${categoryColorsLocal[category as keyof typeof categoryColorsLocal]?.bg} ${categoryColorsLocal[category as keyof typeof categoryColorsLocal]?.text}`
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
             >
-              {category !== 'all' && categoryColors[category as keyof typeof categoryColors]?.icon} {getTabLabel(category)}
+              {category !== 'all' && categoryColorsLocal[category as keyof typeof categoryColorsLocal]?.icon} {getTabLabel(category)}
             </button>
           ))}
         </div>
