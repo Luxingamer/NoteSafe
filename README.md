@@ -2,6 +2,19 @@
 
 Une application de prise de notes sécurisée et moderne, avec authentification Firebase obligatoire.
 
+## Fonctionnalités principales
+
+- Authentification sécurisée avec Firebase
+- Synchronisation en temps réel des notes
+- Mode hors ligne avec synchronisation automatique
+- Système de notifications avec limite de 50 notifications
+- Gestion des catégories de notes
+- Formatage Markdown
+- Système de succès et de points
+- Statistiques d'utilisation
+- Interface responsive et moderne
+- Thème clair/sombre
+
 ## Configuration Firebase
 
 ### Informations de connexion
@@ -25,6 +38,21 @@ NEXT_PUBLIC_FIREBASE_DATABASE_URL=votre_database_url
 4. Lancez l'application avec `npm run dev`
 5. Créez un compte ou connectez-vous avec un compte existant
 6. Vos notes seront automatiquement synchronisées entre vos appareils
+
+### Mode hors ligne
+L'application peut fonctionner sans connexion Internet :
+- Détection automatique de la connexion
+- Mode hors ligne explicite activable
+- Synchronisation automatique au retour en ligne
+- Sauvegarde locale des modifications
+- Notification de l'état de connexion
+
+### Système de notifications
+- Limite de 50 notifications
+- Suppression automatique des plus anciennes
+- Notifications pour les actions importantes
+- Alertes système et de connexion
+- Notifications en temps réel
 
 ### Développement avec Firebase
 - L'application nécessite une authentification pour fonctionner
@@ -58,10 +86,9 @@ L'application dispose d'une documentation intégrée qui vous guide à travers s
 Débloquez des succès en utilisant les différentes fonctionnalités de l'application :
 - Création de notes
 - Utilisation des catégories
-- Personnalisation du profil
-- Et plus encore...
-
-## Fonctionnalités
+- Exploration des fonctionnalités
+- Participation active
+- Gestion efficace des notes
 
 - Authentification obligatoire avec Firebase
 - Synchronisation en temps réel des notes

@@ -484,6 +484,22 @@ export default function Documentation() {
                   <li>Restauration depuis la corbeille</li>
                   <li>Notifications système</li>
                   <li>Alertes importantes</li>
+                  <li>Limite de 50 notifications</li>
+                  <li>Suppression automatique des plus anciennes</li>
+                </ul>
+              </div>
+
+              <div className="border dark:border-gray-700 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Mode hors ligne</h3>
+                <p className="text-gray-600 dark:text-gray-300 mb-2">
+                  L'application peut fonctionner sans connexion Internet :
+                </p>
+                <ul className="list-disc pl-6 space-y-1 text-gray-600 dark:text-gray-300">
+                  <li>Détection automatique de la connexion</li>
+                  <li>Mode hors ligne explicite activable</li>
+                  <li>Synchronisation automatique au retour en ligne</li>
+                  <li>Sauvegarde locale des modifications</li>
+                  <li>Notification de l'état de connexion</li>
                 </ul>
               </div>
 
@@ -497,42 +513,6 @@ export default function Documentation() {
                   <li>Suppression définitive</li>
                   <li>Vidage de la corbeille</li>
                   <li>Conservation pendant 30 jours</li>
-                </ul>
-              </div>
-
-              <div className="border dark:border-gray-700 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Thèmes</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-2">
-                  Personnalisez l&apos;apparence de l&apos;application :
-                </p>
-                <ul className="list-disc pl-6 space-y-1 text-gray-600 dark:text-gray-300">
-                  <li>Mode clair/sombre</li>
-                  <li>Adaptation automatique au thème système</li>
-                  <li>Interface responsive</li>
-                </ul>
-              </div>
-
-              <div className="border dark:border-gray-700 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Sauvegarde automatique</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-2">
-                  Vos notes sont automatiquement sauvegardées :
-                </p>
-                <ul className="list-disc pl-6 space-y-1 text-gray-600 dark:text-gray-300">
-                  <li>Sauvegarde en temps réel</li>
-                  <li>Persistance locale des données</li>
-                  <li>Pas de perte de données en cas de fermeture accidentelle</li>
-                </ul>
-              </div>
-
-              <div className="border dark:border-gray-700 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Confirmation de suppression</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-2">
-                  Protection contre les suppressions accidentelles :
-                </p>
-                <ul className="list-disc pl-6 space-y-1 text-gray-600 dark:text-gray-300">
-                  <li>Délai de confirmation personnalisable</li>
-                  <li>Annulation possible pendant le compte à rebours</li>
-                  <li>Notification de confirmation</li>
                 </ul>
               </div>
             </div>

@@ -7,6 +7,21 @@ export default function SplashScreen() {
   const [animationComplete, setAnimationComplete] = useState(false);
   const [loadingText, setLoadingText] = useState("Préparation de l'environnement...");
   const [particlesVisible, setParticlesVisible] = useState(true);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    // Vérifier l'état de la connexion
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     // Simuler une progression de chargement
@@ -105,6 +120,15 @@ export default function SplashScreen() {
             <span className="absolute inset-0 blur-sm opacity-50">Sécurisez et organisez vos pensées en toute simplicité</span>
           </p>
         </div>
+
+        {/* Message hors ligne si nécessaire */}
+        {!isOnline && (
+          <div className="mb-4 px-4 py-2 bg-amber-500/20 border border-amber-500/30 rounded-lg">
+            <p className="text-amber-300 text-sm">
+              Mode hors ligne détecté. Certaines fonctionnalités peuvent être limitées.
+            </p>
+          </div>
+        )}
 
         {/* Barre de progression améliorée avec effet de lueur */}
         <div className="w-72 h-3 bg-green-950/50 rounded-full overflow-hidden mb-4 backdrop-blur-sm border border-green-800/30 relative">

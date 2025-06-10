@@ -79,11 +79,6 @@ const categoryColorsLocal = {
     text: 'text-amber-800 dark:text-amber-300',
     icon: '📚'
   },
-  'ia': {
-    bg: 'bg-indigo-100 dark:bg-indigo-900/20',
-    text: 'text-indigo-800 dark:text-indigo-300',
-    icon: '🤖'
-  },
   'personnalisation': {
     bg: 'bg-rose-100 dark:bg-rose-900/20',
     text: 'text-rose-800 dark:text-rose-300',
@@ -210,6 +205,9 @@ interface CategoryStats {
 // Type pour les statistiques par catégorie
 type StatsByCategory = Record<string, CategoryStats>;
 
+// Type pour les statistiques par rareté
+type StatsByRarity = Record<string, CategoryStats>;
+
 // Widget de statistiques de succès
 const AchievementStats: React.FC = () => {
   const { achievements, unlockedAchievements, totalPoints } = useAchievements();
@@ -223,20 +221,36 @@ const AchievementStats: React.FC = () => {
     'social': { total: 0, unlocked: 0 },
     'innovation': { total: 0, unlocked: 0 },
     'lecture': { total: 0, unlocked: 0 },
-    'ia': { total: 0, unlocked: 0 },
     'personnalisation': { total: 0, unlocked: 0 },
     'memoire': { total: 0, unlocked: 0 }
+  };
+
+  // Calculer les statistiques par rareté
+  const statsByRarity: StatsByRarity = {
+    'commun': { total: 0, unlocked: 0 },
+    'rare': { total: 0, unlocked: 0 },
+    'epique': { total: 0, unlocked: 0 },
+    'legendaire': { total: 0, unlocked: 0 }
   };
   
   // Calculer les statistiques
   achievements.forEach(achievement => {
     const normalizedCategory = achievement.category.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const normalizedRarity = achievement.rarity.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     
     // Mettre à jour les stats de catégorie
     if (statsByCategory[normalizedCategory]) {
       statsByCategory[normalizedCategory].total += 1;
       if (achievement.unlockedAt) {
         statsByCategory[normalizedCategory].unlocked += 1;
+      }
+    }
+
+    // Mettre à jour les stats de rareté
+    if (statsByRarity[normalizedRarity]) {
+      statsByRarity[normalizedRarity].total += 1;
+      if (achievement.unlockedAt) {
+        statsByRarity[normalizedRarity].unlocked += 1;
       }
     }
   });
@@ -274,6 +288,41 @@ const AchievementStats: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* Statistiques par rareté */}
+        <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-lg p-4 border border-indigo-200 dark:border-indigo-800">
+          <h4 className="text-lg font-medium text-indigo-700 dark:text-indigo-300 mb-3">
+            Succès par rareté
+          </h4>
+          <div className="space-y-3">
+            {Object.entries(statsByRarity).map(([rarity, stats]) => {
+              const percent = Math.round((stats.unlocked / (stats.total || 1)) * 100) || 0;
+              const rarityColor = rarityColorsWithGlow[rarity] || rarityColorsWithGlow['commun'];
+              
+              return (
+                <div key={rarity} className="flex flex-col">
+                  <div className="flex justify-between items-center mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${rarityColor.bg.replace('/20', '')}`}></span>
+                      <span className={`text-sm font-medium ${rarityColor.text}`}>
+                        {rarity.charAt(0).toUpperCase() + rarity.slice(1)}
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      {stats.unlocked}/{stats.total}
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full ${rarityColor.progress}`}
+                      style={{ width: `${percent}%` }}
+                    ></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
       
       {/* Progression par catégorie */}
@@ -285,7 +334,6 @@ const AchievementStats: React.FC = () => {
         <div className="space-y-4">
           {Object.entries(statsByCategory).map(([category, stats]) => {
             const percent = Math.round((stats.unlocked / (stats.total || 1)) * 100) || 0;
-            // Normalisation robuste
             const normalizedCategory = category.toLowerCase().normalize('NFD').replace(/\u0300-\u036f/g, '');
             const catColor = categoryColorsLocal[category as keyof typeof categoryColorsLocal] || categoryColorsLocal[normalizedCategory as keyof typeof categoryColorsLocal];
             if (!catColor) {
@@ -350,7 +398,7 @@ export default function Achievements() {
   });
   
   // Liste des catégories pour les onglets
-  const categories = ['all', 'écriture', 'exploration', 'collection', 'maîtrise', 'social', 'innovation', 'lecture', 'ia', 'personnalisation'];
+  const categories = ['all', 'écriture', 'exploration', 'collection', 'maîtrise', 'social', 'innovation', 'lecture', 'personnalisation'];
   const rarities = ['all', 'commun', 'rare', 'épique', 'légendaire'];
   
   // Traduire les étiquettes des onglets

@@ -12,6 +12,8 @@ interface ConnectionContextType {
   pendingChangesCount: number;
   syncMode: 'manual' | 'auto';
   setSyncMode: (mode: 'manual' | 'auto') => void;
+  offlineMode: boolean;
+  toggleOfflineMode: () => void;
 }
 
 const ConnectionContext = createContext<ConnectionContextType | undefined>(undefined);
@@ -22,11 +24,12 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [pendingChangesCount, setPendingChangesCount] = useState<number>(0);
   const [syncMode, setSyncMode] = useState<'manual' | 'auto'>('auto');
+  const [offlineMode, setOfflineMode] = useState<boolean>(false);
   
   const { addNotification } = useNotifications();
   const { notes, syncNotesToFirebase, loadNotesFromFirebase } = useNotes();
 
-  // Charger les préférences de synchronisation depuis le localStorage
+  // Charger les préférences depuis le localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedMode = localStorage.getItem('notesafe_sync_mode');
@@ -37,7 +40,14 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
       // Charger la date de dernière synchronisation
       const lastSyncedStr = localStorage.getItem('notesafe_last_synced');
       if (lastSyncedStr) {
-        setLastSynced(new Date(lastSyncedStr));
+        try {
+          const date = new Date(lastSyncedStr);
+          if (!isNaN(date.getTime())) {
+            setLastSynced(date);
+          }
+        } catch (error) {
+          console.error('Erreur lors de la conversion de la date:', error);
+        }
       }
       
       // Charger le nombre de changements en attente
@@ -45,15 +55,22 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
       if (pendingChanges) {
         setPendingChangesCount(parseInt(pendingChanges, 10));
       }
+
+      // Charger le mode hors ligne
+      const savedOfflineMode = localStorage.getItem('notesafe_offline_mode');
+      if (savedOfflineMode) {
+        setOfflineMode(savedOfflineMode === 'true');
+      }
     }
   }, []);
   
-  // Sauvegarder les préférences de synchronisation dans le localStorage
+  // Sauvegarder les préférences dans le localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('notesafe_sync_mode', syncMode);
+      localStorage.setItem('notesafe_offline_mode', offlineMode.toString());
     }
-  }, [syncMode]);
+  }, [syncMode, offlineMode]);
   
   // Sauvegarder la date de dernière synchronisation
   useEffect(() => {
@@ -73,27 +90,31 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      addNotification({
-        type: 'info',
-        title: 'Connexion rétablie',
-        message: 'Vous êtes maintenant connecté à Internet',
-        action: 'connection_status_changed'
-      });
-      
-      // Si en mode auto, synchroniser automatiquement
-      if (syncMode === 'auto' && pendingChangesCount > 0) {
-        synchronizeNotes();
+      if (!offlineMode) {
+        addNotification({
+          type: 'info',
+          title: 'Connexion rétablie',
+          message: 'Vous êtes maintenant connecté à Internet',
+          action: 'connection_status_changed'
+        });
+        
+        // Si en mode auto, synchroniser automatiquement
+        if (syncMode === 'auto' && pendingChangesCount > 0) {
+          synchronizeNotes();
+        }
       }
     };
     
     const handleOffline = () => {
       setIsOnline(false);
-      addNotification({
-        type: 'warning',
-        title: 'Connexion perdue',
-        message: 'Vous êtes maintenant en mode hors ligne. Vos modifications seront synchronisées lorsque vous serez reconnecté.',
-        action: 'connection_status_changed'
-      });
+      if (!offlineMode) {
+        addNotification({
+          type: 'warning',
+          title: 'Connexion perdue',
+          message: 'Vous êtes maintenant en mode hors ligne. Vos modifications seront synchronisées lorsque vous serez reconnecté.',
+          action: 'connection_status_changed'
+        });
+      }
     };
     
     window.addEventListener('online', handleOnline);
@@ -103,16 +124,17 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [addNotification, syncMode, pendingChangesCount]);
+  }, [addNotification, syncMode, pendingChangesCount, offlineMode]);
   
   // Surveiller les changements de notes pour mettre à jour le compteur
   useEffect(() => {
     // Si on a déjà synchronisé au moins une fois et qu'on est offline
     if (lastSynced && !isOnline) {
       // Compter le nombre de notes qui ont été modifiées après la dernière synchronisation
-      const changedNotes = notes.filter(note => 
-        new Date(note.lastModified) > (lastSynced as Date)
-      );
+      const changedNotes = notes.filter(note => {
+        const noteModifiedDate = new Date(note.lastModified);
+        return noteModifiedDate > lastSynced;
+      });
       
       setPendingChangesCount(changedNotes.length);
     }
@@ -159,6 +181,17 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
     }
   };
   
+  // Fonction pour basculer le mode hors ligne
+  const toggleOfflineMode = () => {
+    setOfflineMode(prev => !prev);
+    addNotification({
+      type: 'info',
+      title: 'Mode hors ligne',
+      message: !offlineMode ? 'Mode hors ligne activé. Les synchronisations sont désactivées.' : 'Mode hors ligne désactivé.',
+      action: 'connection_status_changed'
+    });
+  };
+  
   return (
     <ConnectionContext.Provider
       value={{
@@ -168,7 +201,9 @@ export function ConnectionProvider({ children }: { children: React.ReactNode }) 
         synchronizeNotes,
         pendingChangesCount,
         syncMode,
-        setSyncMode
+        setSyncMode,
+        offlineMode,
+        toggleOfflineMode
       }}
     >
       {children}

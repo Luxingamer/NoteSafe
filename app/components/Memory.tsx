@@ -8,6 +8,7 @@ import { useMemory } from '../context/MemoryContext';
 import { encrypt, decrypt } from '../utils/encryption';
 import DeleteConfirmation from './DeleteConfirmation';
 import { MemoryItemType, MemoryItem } from '../types/memory';
+import PointCost from './PointCost';
 
 export default function Memory() {
   const [items, setItems] = useState<MemoryItem[]>([]);
@@ -73,6 +74,13 @@ export default function Memory() {
       (item.tags || []).some(tag => tag.toLowerCase().includes(searchLower))
     );
   });
+
+  // Mise à jour du type lors du changement de filtre
+  useEffect(() => {
+    if (activeType !== 'all') {
+      setNewItem(prev => ({ ...prev, type: activeType as MemoryItemType }));
+    }
+  }, [activeType]);
 
   // Ajouter un nouvel élément
   const handleAddItem = () => {
@@ -177,7 +185,7 @@ export default function Memory() {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-6 space-y-8">
+    <div className="w-full max-w-6xl mx-auto p-6 space-y-8 overflow-x-hidden">
       {/* En-tête */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -191,15 +199,16 @@ export default function Memory() {
 
         <button
           onClick={() => setIsAddingNew(true)}
-          className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
+          className="relative px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 flex items-center gap-2"
         >
           <span>+</span>
           Nouveau
+          <PointCost cost={POINT_COSTS.MEMORY_ITEM_ADDED} position="top-right" />
         </button>
       </div>
 
       {/* Filtres et recherche */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md">
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setActiveType('all')}
@@ -233,16 +242,13 @@ export default function Memory() {
             placeholder="Rechercher..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-700 outline-none transition-all duration-200"
+            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
           />
-          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-            🔍
-          </span>
         </div>
       </div>
 
       {/* Liste des éléments */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[200px]">
         <AnimatePresence>
           {filteredItems.map(item => (
             <motion.div
@@ -343,12 +349,7 @@ export default function Memory() {
       {/* Modal d'ajout */}
       <AnimatePresence>
         {isAddingNew && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-          >
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -364,6 +365,7 @@ export default function Memory() {
                     value={newItem.type}
                     onChange={(e) => setNewItem(prev => ({ ...prev, type: e.target.value as MemoryItemType }))}
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+                    disabled={activeType !== 'all'}
                   >
                     <option value="password">Mot de passe</option>
                     <option value="number">Numéro confidentiel</option>
@@ -436,7 +438,7 @@ export default function Memory() {
                 </div>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 

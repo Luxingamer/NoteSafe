@@ -115,6 +115,9 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [toasts, setToasts] = useState<NotificationItem[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Constante pour la limite de notifications
+  const NOTIFICATIONS_LIMIT = 50;
 
   // Charger les notifications depuis le localStorage au démarrage
   useEffect(() => {
@@ -126,7 +129,8 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
             ...notification,
             timestamp: new Date(notification.timestamp)
           }));
-          setNotifications(parsedNotifications);
+          // Limiter le nombre de notifications chargées
+          setNotifications(parsedNotifications.slice(0, NOTIFICATIONS_LIMIT));
         }
       } catch (error) {
         console.error('Erreur lors du chargement des notifications:', error);
@@ -182,7 +186,11 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     );
 
     if (!isDuplicate) {
-      setNotifications(prev => [newNotification, ...prev]);
+      setNotifications(prev => {
+        // Ajouter la nouvelle notification et garder seulement les NOTIFICATIONS_LIMIT plus récentes
+        const updatedNotifications = [newNotification, ...prev];
+        return updatedNotifications.slice(0, NOTIFICATIONS_LIMIT);
+      });
       setToasts(prev => [...prev, newNotification]);
     }
   }, [notifications]);
